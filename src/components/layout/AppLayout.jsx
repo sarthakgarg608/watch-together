@@ -1,52 +1,57 @@
-// AppLayout.jsx
-// ------------------------------------------------------
-// Global application layout.
-//
-// Normal pages:
-// Navbar
-//   ↓
-// Page Content
-//   ↓
-// Footer
-//
-// Home page:
-// - Uses its own premium landing-page navbar.
-//
-// Room pages:
-// - Use their own room-specific UI.
-// ------------------------------------------------------
-
 import { useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
 
 function AppLayout({ children }) {
   const location = useLocation();
+  const pathname = location.pathname;
 
-  // Home has its own navbar.
-  const isHomePage = location.pathname === "/";
+  const isHome = pathname === "/";
 
-  // Room pages have their own room-specific layout.
-  const isRoomPage = location.pathname.startsWith("/room");
+  const isAuthPage =
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/register") ||
+    pathname.startsWith("/verify-email") ||
+    pathname.startsWith("/forgot-password") ||
+    pathname.startsWith("/reset-password");
 
-  const showNavbar = !isHomePage && !isRoomPage;
+  const isRoomPage = pathname.startsWith("/rooms/");
+
+  /*
+   * Home has its own cinematic navigation.
+   *
+   * Auth pages have their own centered layout.
+   *
+   * Room pages use their own room header.
+   */
+  const hideNavbar = isHome || isAuthPage || isRoomPage;
+
+  const hideFooter = isHome || isAuthPage || isRoomPage;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      {/* Global Navbar */}
+    <div className="min-h-screen bg-[#040611] text-white">
+      {!hideNavbar && <Navbar />}
 
-      {showNavbar && <Navbar />}
+      <main className="min-h-screen">
+        {children}
+      </main>
 
-      {/* Page Content */}
+      {!hideFooter && (
+        <footer className="border-t border-white/[0.06] bg-[#03040b]">
+          <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+            <div>
+              <p className="text-sm font-bold text-white">
+                Watch Together
+              </p>
 
-      <main className="app-content">{children}</main>
+              <p className="mt-1 text-xs text-slate-600">
+                Watch. Chat. Connect.
+              </p>
+            </div>
 
-      {/* Global Footer */}
-
-      {!isRoomPage && (
-        <footer className="border-t border-white/5 bg-slate-950 px-6 py-8 text-center">
-          <p className="text-sm text-slate-500">
-            © {new Date().getFullYear()} Watch Together. All rights reserved.
-          </p>
+            <p className="text-xs text-slate-600">
+              © {new Date().getFullYear()} Watch Together
+            </p>
+          </div>
         </footer>
       )}
     </div>

@@ -1,113 +1,151 @@
-// MovieSelector.jsx
-// ------------------------------------------------------
-// Allows the user to select a movie.
-//
-// When movie changes:
-// - selectedMovie changes
-// - playback automatically resets
-// - currentTime becomes 0
-// - duration becomes 0
-// - video pauses
-//
-// Later this selection will be synchronized through
-// Socket.IO so all participants get the same movie.
-// ------------------------------------------------------
+import { useState } from "react";
 
-import { useRoom } from "../../context/RoomContext";
-
-const MOVIES = [
+const movies = [
   {
     id: "movie-1",
-    title: "Inception",
-    year: 2010,
-    duration: "2h 28m",
+    title: "Nature Escape",
+    year: 2024,
+    genre: "Documentary",
+    image:
+      "https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=800&q=80",
     videoUrl:
-      "https://www.w3schools.com/html/mov_bbb.mp4",
+      "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   },
-
   {
     id: "movie-2",
-    title: "Big Buck Bunny",
-    year: 2008,
-    duration: "9m",
+    title: "Night Adventure",
+    year: 2025,
+    genre: "Adventure",
+    image:
+      "https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=800&q=80",
     videoUrl:
-      "https://www.w3schools.com/html/mov_bbb.mp4",
+      "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   },
-
   {
     id: "movie-3",
-    title: "Watch Together Demo",
+    title: "The Journey",
     year: 2026,
-    duration: "Demo",
+    genre: "Drama",
+    image:
+      "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=800&q=80",
     videoUrl:
-      "https://www.w3schools.com/html/mov_bbb.mp4",
+      "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
   },
 ];
 
-function MovieSelector() {
-  const {
-    selectedMovie,
-    setSelectedMovie,
-  } = useRoom();
+function MovieSelector({ selectedMovie, onSelect }) {
+  const [open, setOpen] = useState(false);
 
-  const handleMovieSelect = (movie) => {
-    setSelectedMovie(movie);
+  const handleSelect = (movie) => {
+    onSelect?.(movie);
+    setOpen(false);
   };
 
   return (
-    <section className="movie-selector">
+    <div className="relative z-40">
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-[#080a13]/90 px-2.5 py-2 shadow-2xl backdrop-blur-xl transition hover:border-violet-500/30 hover:bg-[#0b0d18]"
+      >
+        {selectedMovie ? (
+          <img
+            src={selectedMovie.image}
+            alt=""
+            className="h-9 w-9 rounded-xl object-cover"
+          />
+        ) : (
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-300">
+            ▶
+          </div>
+        )}
 
-      <h2>
-        Select Movie
-      </h2>
+        <div className="hidden min-w-0 text-left sm:block">
+          <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-500">
+            Watching
+          </p>
 
-      <div className="movie-list">
+          <p className="max-w-32 truncate text-xs font-bold text-white">
+            {selectedMovie?.title || "Select movie"}
+          </p>
+        </div>
 
-        {MOVIES.map((movie) => {
+        <span
+          className={`px-1 text-xs text-slate-500 transition ${
+            open ? "rotate-180" : ""
+          }`}
+        >
+          ▼
+        </span>
+      </button>
 
-          const isSelected =
-            selectedMovie?.id === movie.id;
+      {/* Dropdown */}
+      {open && (
+        <>
+          {/* Mobile backdrop */}
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-[-1] cursor-default bg-transparent"
+            aria-label="Close movie selector"
+          />
 
-          return (
-            <button
-              key={movie.id}
-              type="button"
-              onClick={() =>
-                handleMovieSelect(movie)
-              }
-              aria-pressed={
-                isSelected
-              }
-              data-selected={
-                isSelected
-              }
-            >
+          <div className="absolute left-0 top-[calc(100%+8px)] w-80 overflow-hidden rounded-2xl border border-white/10 bg-[#080a13]/98 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+            <div className="border-b border-white/[0.08] px-4 py-3">
+              <p className="text-sm font-bold text-white">
+                Choose what to watch
+              </p>
 
-              <strong>
-                {movie.title}
-              </strong>
+              <p className="mt-1 text-[10px] text-slate-500">
+                Everyone in the room will eventually see the same movie.
+              </p>
+            </div>
 
-              <span>
-                {movie.year}
-              </span>
+            <div className="max-h-72 overflow-y-auto p-2">
+              {movies.map((movie) => {
+                const isSelected = selectedMovie?.id === movie.id;
 
-              <span>
-                {movie.duration}
-              </span>
+                return (
+                  <button
+                    type="button"
+                    key={movie.id}
+                    onClick={() => handleSelect(movie)}
+                    className={`flex w-full items-center gap-3 rounded-xl p-2 text-left transition ${
+                      isSelected
+                        ? "bg-violet-500/10 ring-1 ring-violet-500/20"
+                        : "hover:bg-white/[0.05]"
+                    }`}
+                  >
+                    <img
+                      src={movie.image}
+                      alt={movie.title}
+                      className="h-12 w-20 shrink-0 rounded-lg object-cover"
+                    />
 
-            </button>
-          );
-        })}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-bold text-white">
+                        {movie.title}
+                      </p>
 
-      </div>
+                      <p className="mt-1 text-[10px] text-slate-500">
+                        {movie.year} · {movie.genre}
+                      </p>
+                    </div>
 
-      {!selectedMovie && (
-        <p>
-          Select a movie to start watching.
-        </p>
+                    {isSelected && (
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-500/15 text-xs text-violet-300">
+                        ✓
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
       )}
-
-    </section>
+    </div>
   );
 }
 

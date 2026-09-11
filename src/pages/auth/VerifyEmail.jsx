@@ -1,108 +1,210 @@
 // VerifyEmail.jsx
 // ------------------------------------------------------
-// Email verification page.
+// Email verification screen.
 //
-// Current:
-// - Frontend-only OTP interface.
-// - Backend OTP verification will be connected later.
+// Current phase:
+// - Frontend UI
+// - OTP input
+//
+// Backend OTP verification will be connected later.
 // ------------------------------------------------------
 
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 function VerifyEmail() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const email =
+    location.state?.email ||
+    "your email address";
 
   const [otp, setOtp] = useState("");
-  const [verified, setVerified] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleChange = (event) => {
+    const value = event.target.value
+      .replace(/\D/g, "")
+      .slice(0, 6);
+
+    setOtp(value);
+  };
 
   const handleSubmit = (event) => {
     event.preventDefault();
 
+    setError("");
+
     if (otp.length !== 6) {
+      setError("Please enter the 6-digit verification code.");
       return;
     }
 
-    // Backend email verification API will be connected later.
-    setVerified(true);
-  };
-
-  const handleContinue = () => {
+    // Temporary frontend behaviour.
     navigate("/login");
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
-      <div className="w-full max-w-md">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl sm:p-8">
-          <h1 className="text-2xl font-bold text-white">Verify Your Email</h1>
+    <main className="relative min-h-screen overflow-hidden bg-[#040611] text-white">
 
-          <p className="mt-2 text-sm leading-6 text-slate-400">
-            Enter the 6-digit verification code sent to your email address.
-          </p>
+      <div className="pointer-events-none fixed inset-0">
 
-          {verified ? (
-            <div className="mt-8 space-y-5">
-              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
-                <p className="text-sm text-emerald-300">
-                  Your email has been verified successfully.
-                </p>
-              </div>
+        <div className="absolute left-[-15%] top-[-10%] h-[500px] w-[500px] rounded-full bg-violet-600/15 blur-[150px]" />
 
-              <button
-                type="button"
-                onClick={handleContinue}
-                className="w-full rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-violet-500 active:scale-[0.98]"
-              >
-                Continue to Login
-              </button>
+        <div className="absolute right-[-15%] bottom-[-10%] h-[500px] w-[500px] rounded-full bg-fuchsia-600/10 blur-[150px]" />
+
+      </div>
+
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-12">
+
+        <div className="w-full max-w-md">
+
+          <div className="mb-8 text-center">
+
+            <Link
+              to="/"
+              className="text-xl font-black"
+            >
+              Watch
+              <span className="text-violet-400">
+                Together
+              </span>
+            </Link>
+
+          </div>
+
+          <div
+            className="
+              rounded-3xl
+              border border-white/10
+              bg-white/[0.035]
+              p-6
+              text-center
+              shadow-2xl
+              shadow-black/30
+              backdrop-blur-2xl
+              sm:p-8
+            "
+          >
+
+            <div
+              className="
+                mx-auto flex h-16 w-16
+                items-center justify-center
+                rounded-2xl
+                bg-violet-500/10
+                text-2xl
+              "
+            >
+              ✉
             </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-              <div>
-                <label
-                  htmlFor="otp"
-                  className="mb-2 block text-sm font-medium text-slate-200"
-                >
-                  Verification code
-                </label>
 
-                <input
-                  id="otp"
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={otp}
-                  onChange={(event) =>
-                    setOtp(event.target.value.replace(/\D/g, ""))
-                  }
-                  placeholder="000000"
-                  required
-                  className="w-full rounded-xl border border-white/10 bg-slate-900/80 px-4 py-3 text-center text-lg font-semibold tracking-[0.5em] text-white outline-none transition placeholder:text-slate-600 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20"
-                />
+            <h1 className="mt-5 text-2xl font-black">
+              Verify your email
+            </h1>
+
+            <p className="mt-3 text-sm leading-6 text-slate-500">
+              We've sent a 6-digit verification code
+              to
+              <br />
+              <span className="font-semibold text-slate-300">
+                {email}
+              </span>
+            </p>
+
+            {error && (
+              <div
+                className="
+                  mt-5 rounded-xl
+                  border border-red-400/20
+                  bg-red-500/10
+                  px-4 py-3
+                  text-left text-sm text-red-300
+                "
+              >
+                {error}
               </div>
+            )}
+
+            <form
+              onSubmit={handleSubmit}
+              className="mt-7"
+            >
+
+              <input
+                type="text"
+                inputMode="numeric"
+                value={otp}
+                onChange={handleChange}
+                placeholder="000000"
+                className="
+                  w-full rounded-2xl
+                  border border-white/10
+                  bg-black/20
+                  px-4 py-5
+                  text-center
+                  font-mono text-3xl
+                  font-black
+                  tracking-[0.35em]
+                  text-white
+                  outline-none
+                  transition-all duration-300
+                  placeholder:text-slate-700
+                  focus:border-violet-400/40
+                  focus:ring-4
+                  focus:ring-violet-500/10
+                "
+              />
 
               <button
                 type="submit"
-                disabled={otp.length !== 6}
-                className="w-full rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className="
+                  mt-5 w-full rounded-xl
+                  bg-gradient-to-r
+                  from-violet-600
+                  to-fuchsia-600
+                  py-3.5
+                  text-sm font-bold
+                  shadow-lg
+                  shadow-violet-900/30
+                  transition-all duration-300
+                  hover:-translate-y-0.5
+                "
               >
-                Verify Email
+                Verify email
               </button>
-            </form>
-          )}
 
-          <div className="mt-6 text-center">
+            </form>
+
+            <button
+              type="button"
+              className="
+                mt-5 text-xs font-semibold
+                text-violet-400
+                transition-colors
+                hover:text-violet-300
+              "
+            >
+              Didn't receive the code? Resend
+            </button>
+
+          </div>
+
+          <p className="mt-6 text-center text-sm text-slate-600">
             <Link
               to="/login"
-              className="text-sm font-medium text-violet-400 transition hover:text-violet-300"
+              className="text-violet-400 hover:text-violet-300"
             >
-              ← Back to Login
+              Back to sign in
             </Link>
-          </div>
+          </p>
+
         </div>
+
       </div>
-    </div>
+
+    </main>
   );
 }
 

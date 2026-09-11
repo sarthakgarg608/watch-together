@@ -1,64 +1,89 @@
-// RoomHeader.jsx
-// ------------------------------------------------------
-// Header displayed at the top of a watch room.
-//
-// Current:
-// - Room name
-// - Room code
-// - Connection indicator
-//
-// Later:
-// - Socket.IO connection status
-// - Host controls
-// - Leave room
-// ------------------------------------------------------
+import { useNavigate } from "react-router-dom";
 
-import { useRoom } from "../../context/RoomContext";
+function RoomHeader({
+  room,
+  onInvite,
+  onLeave,
+}) {
+  const navigate = useNavigate();
 
-function RoomHeader() {
-  const {
-    room,
-    isConnected,
-  } = useRoom();
+  const roomName = room?.name || "Watch Room";
+  const roomCode = room?.roomCode || "------";
 
-  if (!room) {
-    return null;
-  }
+  const handleLeave = () => {
+    if (onLeave) {
+      onLeave();
+      return;
+    }
+
+    navigate("/dashboard");
+  };
 
   return (
-    <header className="flex flex-col gap-4 border-b border-white/10 bg-slate-950/80 px-4 py-4 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:px-6">
+    <header className="relative z-30 flex h-16 shrink-0 items-center justify-between border-b border-white/[0.08] bg-[#05060d]/95 px-3 backdrop-blur-xl sm:px-5">
 
-      <div className="min-w-0">
-        <h1 className="truncate text-lg font-bold text-white sm:text-xl">
-          {room.name || "Watch Room"}
-        </h1>
+      {/* Left */}
+      <div className="flex min-w-0 items-center gap-3">
 
-        <p className="mt-1 text-xs text-slate-400">
-          Room code:{" "}
-          <span className="font-semibold tracking-wider text-slate-200">
-            {room.roomCode}
+        {/* Logo */}
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="hidden items-center gap-2 sm:flex"
+        >
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-sm font-black shadow-lg shadow-violet-500/20">
+            ▶
+          </div>
+
+          <span className="hidden text-sm font-bold md:block">
+            Watch Together
           </span>
-        </p>
+        </button>
+
+        <div className="hidden h-7 w-px bg-white/10 sm:block" />
+
+        {/* Room info */}
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold text-white sm:text-base">
+            {roomName}
+          </p>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase tracking-wider text-slate-500">
+              Room
+            </span>
+
+            <button
+              onClick={() => navigator.clipboard?.writeText(roomCode)}
+              className="font-mono text-xs font-bold tracking-[0.18em] text-violet-300 transition hover:text-violet-200"
+              title="Copy room code"
+            >
+              {roomCode}
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div className="flex items-center gap-2 text-sm">
+      {/* Right */}
+      <div className="flex items-center gap-2">
 
-        <span
-          className={`h-2.5 w-2.5 rounded-full ${
-            isConnected
-              ? "bg-emerald-400"
-              : "bg-red-400"
-          }`}
-        />
+        {/* Invite */}
+        <button
+          onClick={onInvite}
+          className="hidden items-center gap-2 rounded-xl border border-violet-500/20 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-200 transition hover:border-violet-500/40 hover:bg-violet-500/20 sm:flex"
+        >
+          <span>↗</span>
+          Invite
+        </button>
 
-        <span className="text-slate-300">
-          {isConnected
-            ? "Connected"
-            : "Disconnected"}
-        </span>
-
+        {/* Leave */}
+        <button
+          onClick={handleLeave}
+          className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-300 transition hover:border-red-500/40 hover:bg-red-500/20"
+        >
+          <span className="sm:hidden">Exit</span>
+          <span className="hidden sm:inline">Leave Room</span>
+        </button>
       </div>
-
     </header>
   );
 }

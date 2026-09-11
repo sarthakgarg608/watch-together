@@ -1,11 +1,3 @@
-// ChatPanel.jsx
-// ------------------------------------------------------
-// Watch-room chat UI.
-//
-// Currently frontend-only.
-// Later Socket.IO will handle real-time messages.
-// ------------------------------------------------------
-
 import { useState } from "react";
 
 function ChatPanel() {
@@ -15,26 +7,26 @@ function ChatPanel() {
     {
       id: 1,
       sender: "System",
-      text: "Welcome to the watch party!",
+      text: "Welcome to the watch room!",
+      system: true,
     },
   ]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    const trimmedMessage =
-      message.trim();
+    const cleanMessage = message.trim();
 
-    if (!trimmedMessage) {
+    if (!cleanMessage) {
       return;
     }
 
-    setMessages((previousMessages) => [
-      ...previousMessages,
+    setMessages((current) => [
+      ...current,
       {
         id: Date.now(),
         sender: "You",
-        text: trimmedMessage,
+        text: cleanMessage,
       },
     ]);
 
@@ -42,60 +34,89 @@ function ChatPanel() {
   };
 
   return (
-    <section className="flex h-full min-h-0 flex-col">
+    <section className="flex min-h-0 flex-1 flex-col">
 
-      <div className="border-b border-white/10 px-4 py-3">
-        <h2 className="font-semibold text-white">
-          Chat
-        </h2>
+      {/* Chat header */}
+      <div className="flex items-center justify-between border-b border-white/[0.08] px-4 py-3">
 
-        <p className="text-xs text-slate-500">
-          Talk with everyone in the room
-        </p>
+        <div>
+          <h2 className="text-sm font-bold text-white">
+            Group Chat
+          </h2>
+
+          <p className="text-[10px] text-slate-500">
+            Talk while you watch
+          </p>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-emerald-400" />
+          <span className="text-[10px] text-emerald-400">
+            Live
+          </span>
+        </div>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto p-4">
+      {/* Messages */}
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
 
-        {messages.map((item) => (
-          <div key={item.id}>
-            <p className="text-xs font-medium text-slate-400">
-              {item.sender}
-            </p>
+        {messages.map((chat) => (
+          <div
+            key={chat.id}
+            className={chat.system ? "text-center" : ""}
+          >
+            {chat.system ? (
+              <div className="mx-auto max-w-[90%] rounded-xl bg-white/[0.03] px-3 py-2 text-xs text-slate-500">
+                {chat.text}
+              </div>
+            ) : (
+              <div className="flex gap-2.5">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-[10px] font-bold">
+                  Y
+                </div>
 
-            <p className="mt-1 break-words rounded-xl bg-white/5 px-3 py-2 text-sm text-slate-200">
-              {item.text}
-            </p>
+                <div className="min-w-0">
+                  <p className="mb-1 text-[10px] font-semibold text-violet-300">
+                    {chat.sender}
+                  </p>
+
+                  <div className="rounded-2xl rounded-tl-sm border border-white/[0.06] bg-white/[0.04] px-3 py-2">
+                    <p className="break-words text-xs leading-5 text-slate-300">
+                      {chat.text}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ))}
-
       </div>
 
+      {/* Message input */}
       <form
         onSubmit={handleSubmit}
-        className="border-t border-white/10 p-3"
+        className="border-t border-white/[0.08] p-3"
       >
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] p-1.5 transition focus-within:border-violet-500/40">
 
           <input
             type="text"
             value={message}
-            onChange={(event) =>
-              setMessage(event.target.value)
-            }
-            placeholder="Type a message..."
-            className="min-w-0 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-violet-500"
+            onChange={(event) => setMessage(event.target.value)}
+            placeholder="Send a message..."
+            className="min-w-0 flex-1 bg-transparent px-2 py-2 text-xs text-white outline-none placeholder:text-slate-600"
+            maxLength={500}
           />
 
           <button
             type="submit"
-            className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-500 active:scale-95"
+            disabled={!message.trim()}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500 text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-30"
           >
-            Send
+            ↑
           </button>
-
         </div>
       </form>
-
     </section>
   );
 }

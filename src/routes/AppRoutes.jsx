@@ -11,8 +11,8 @@ import {
   Routes,
 } from "react-router-dom";
 
-import ProtectedRoute from "../components/auth/ProtectedRoute";
 import PublicRoute from "../components/auth/PublicRoute";
+import ProtectedRoute from "../components/auth/ProtectedRoute";
 
 import Home from "../pages/Home";
 import NotFound from "../pages/NotFound";
@@ -40,6 +40,8 @@ function AppRoutes() {
         path="/"
         element={<Home />}
       />
+
+      {/* ================= AUTHENTICATION ================= */}
 
       <Route element={<PublicRoute />}>
 
