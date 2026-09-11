@@ -3,17 +3,23 @@
 // Application entry point.
 // ------------------------------------------------------
 
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
+import {
+  StrictMode,
+} from "react";
 
-import App from "./App";
-import { RoomProvider } from "./context/RoomContext";
+import {
+  createRoot,
+} from "react-dom/client";
+
 import "./index.css";
+import "./styles/animations.css";
 
-createRoot(document.getElementById("root")).render(
+import App from "./App.jsx";
+
+createRoot(
+  document.getElementById("root")
+).render(
   <StrictMode>
-    <RoomProvider>
-      <App />
-    </RoomProvider>
-  </StrictMode>,
+    <App />
+  </StrictMode>
 );
