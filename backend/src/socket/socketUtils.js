@@ -32,7 +32,9 @@ const registerRateLimitedEvent = (
 
       socket.emit("socket:error", {
         event: eventName,
-        message: "Something went wrong.",
+        message:
+          error?.message ||
+          "Something went wrong.",
       });
     }
   });

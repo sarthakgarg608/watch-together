@@ -10,6 +10,15 @@ const playbackStateSchema = new mongoose.Schema(
       index: true,
     },
 
+    // Identifies which movie this playback state belongs to.
+    // This prevents an old movie's playback position from
+    // being reused after the room selects a different movie.
+    movieId: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+
     isPlaying: {
       type: Boolean,
       default: false,

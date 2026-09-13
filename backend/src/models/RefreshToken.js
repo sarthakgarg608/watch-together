@@ -9,8 +9,6 @@ const refreshTokenSchema = new mongoose.Schema(
       index: true,
     },
 
-    // SHA-256 hash of the actual refresh token.
-    // We never store the raw refresh token in MongoDB.
     tokenHash: {
       type: String,
       required: true,
@@ -18,8 +16,6 @@ const refreshTokenSchema = new mongoose.Schema(
       index: true,
     },
 
-    // All rotated tokens from the same login session
-    // belong to the same token family.
     familyId: {
       type: String,
       required: true,
@@ -32,13 +28,11 @@ const refreshTokenSchema = new mongoose.Schema(
       index: true,
     },
 
-    // null means the token is still usable.
     revokedAt: {
       type: Date,
       default: null,
     },
 
-    // Helps us understand which token replaced this one.
     replacedByTokenHash: {
       type: String,
       default: null,
@@ -47,6 +41,11 @@ const refreshTokenSchema = new mongoose.Schema(
   {
     timestamps: true,
   }
+);
+
+refreshTokenSchema.index(
+  { expiresAt: 1 },
+  { expireAfterSeconds: 0 }
 );
 
 const RefreshToken = mongoose.model(

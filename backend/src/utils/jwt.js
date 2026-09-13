@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
+
 import env from "../config/env.js";
 
 function generateAccessToken(userId) {

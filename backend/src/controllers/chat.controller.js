@@ -5,10 +5,30 @@ import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 
 const getMessages = asyncHandler(async (req, res) => {
-  const limit = Math.min(
-    Number.parseInt(req.query.limit, 10) || 50,
-    100
-  );
+  const rawLimit = req.query.limit;
+
+  let limit = 50;
+
+  if (rawLimit !== undefined) {
+    if (
+      typeof rawLimit !== "string" ||
+      !/^\d+$/.test(rawLimit)
+    ) {
+      throw new ApiError(
+        400,
+        "limit must be a positive integer."
+      );
+    }
+
+    limit = Number.parseInt(rawLimit, 10);
+
+    if (limit < 1 || limit > 100) {
+      throw new ApiError(
+        400,
+        "limit must be between 1 and 100."
+      );
+    }
+  }
 
   const before = req.query.before;
 
@@ -17,7 +37,17 @@ const getMessages = asyncHandler(async (req, res) => {
     isDeleted: false,
   };
 
-  if (before) {
+  if (before !== undefined) {
+    if (
+      typeof before !== "string" ||
+      !before.trim()
+    ) {
+      throw new ApiError(
+        400,
+        "Invalid before timestamp."
+      );
+    }
+
     const beforeDate = new Date(before);
 
     if (Number.isNaN(beforeDate.getTime())) {
@@ -35,7 +65,10 @@ const getMessages = asyncHandler(async (req, res) => {
   const messages = await Message.find(query)
     .sort({ createdAt: -1 })
     .limit(limit)
-    .populate("sender", "_id name avatar")
+    .populate(
+      "sender",
+      "_id name avatar"
+    )
     .lean();
 
   const hasMore = messages.length === limit;

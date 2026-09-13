@@ -129,6 +129,7 @@ const registerUser = asyncHandler(async (req, res) => {
     )
   );
 });
+
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
@@ -250,6 +251,7 @@ await RefreshToken.create({
     )
   );
 });
+
 const refreshAccessToken = asyncHandler(
   async (req, res) => {
     const refreshToken =
@@ -421,15 +423,56 @@ const refreshAccessToken = asyncHandler(
       hashToken(newRefreshToken);
 
     /*
-     * Revoke the old token.
-     */
-    storedToken.revokedAt =
-      new Date();
+ * Atomically revoke the old refresh token.
+ *
+ * Only the first refresh request should be able
+ * to rotate this token.
+ */
+const revokedToken =
+  await RefreshToken.findOneAndUpdate(
+    {
+      _id: storedToken._id,
+      revokedAt: null,
+    },
+    {
+      $set: {
+        revokedAt: new Date(),
+        replacedByTokenHash:
+          newRefreshTokenHash,
+      },
+    },
+    {
+      new: true,
+    }
+  );
 
-    storedToken.replacedByTokenHash =
-      newRefreshTokenHash;
+if (!revokedToken) {
+  // Another request already rotated this token.
+  //
+  // Revoke the entire token family because this
+  // indicates refresh-token reuse.
+  await RefreshToken.updateMany(
+    {
+      familyId: storedToken.familyId,
+      revokedAt: null,
+    },
+    {
+      $set: {
+        revokedAt: new Date(),
+      },
+    }
+  );
 
-    await storedToken.save();
+  res.clearCookie(
+    refreshTokenCookieName,
+    refreshTokenCookieOptions
+  );
+
+  throw new ApiError(
+    401,
+    "Refresh token reuse detected. Please log in again."
+  );
+}
 
     /*
      * Store the new refresh token.
@@ -471,35 +514,64 @@ const refreshAccessToken = asyncHandler(
       );
   }
 );
+
 const logoutUser = asyncHandler(async (req, res) => {
   const refreshToken =
-  req.cookies.refreshToken;
+    req.cookies[refreshTokenCookieName];
 
+  // Logout should be idempotent.
+  // Even if the cookie does not exist, the client
+  // should still end up in a logged-out state.
   if (!refreshToken) {
-    throw new ApiError(
-      400,
-      "Refresh token is required."
-    );
+    return res
+      .clearCookie(
+        refreshTokenCookieName,
+        refreshTokenCookieOptions
+      )
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          null,
+          "Logged out successfully."
+        )
+      );
   }
 
-  await RefreshToken.deleteOne({
-    tokenHash: hashToken(refreshToken),
-  });
+  const refreshTokenHash =
+    hashToken(refreshToken);
+
+  // Revoke the refresh token instead of deleting it.
+  //
+  // Keeping the record allows us to detect reuse of
+  // an already-revoked refresh token.
+  await RefreshToken.findOneAndUpdate(
+    {
+      tokenHash: refreshTokenHash,
+      revokedAt: null,
+    },
+    {
+      $set: {
+        revokedAt: new Date(),
+      },
+    }
+  );
 
   res
-  .clearCookie(
-    refreshTokenCookieName,
-    refreshTokenCookieOptions
-  )
-  .status(200)
-  .json(
-    new ApiResponse(
-      200,
-      null,
-      "Logged out successfully."
+    .clearCookie(
+      refreshTokenCookieName,
+      refreshTokenCookieOptions
     )
-  );
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        null,
+        "Logged out successfully."
+      )
+    );
 });
+
 const sendVerificationOtp = asyncHandler(
   async (req, res) => {
     const { email } = req.body;
@@ -573,6 +645,7 @@ const sendVerificationOtp = asyncHandler(
     );
   }
 );
+
 const verifyEmail = asyncHandler(
   async (req, res) => {
     const { email, otp } = req.body;
@@ -679,6 +752,7 @@ if (!isOtpValid) {
     );
   }
 );
+
 const forgotPassword = asyncHandler(
   async (req, res) => {
     const { email } = req.body;
@@ -877,10 +951,17 @@ if (!isOtpValid) {
       _id: otpRecord._id,
     });
 
-    // Invalidate existing refresh tokens
-    await RefreshToken.deleteMany({
-      user: user._id,
-    });
+    await RefreshToken.updateMany(
+      {
+        user: user._id,
+        revokedAt: null,
+      },
+      {
+        $set: {
+          revokedAt: new Date(),
+        },
+      }
+    );
 
     res.status(200).json(
       new ApiResponse(
@@ -891,6 +972,7 @@ if (!isOtpValid) {
     );
   }
 );
+
 export {
   registerUser,
   loginUser,

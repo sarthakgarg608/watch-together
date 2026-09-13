@@ -8,14 +8,19 @@ import {
 } from "../services/presence.service.js";
 
 const registerRoomSocket = (io, socket) => {
-  socket.on("room:join", async ({ roomCode }) => {
+  socket.on(
+  "room:join",
+  async (payload = {}) => {
     try {
+      const { roomCode } = payload;
+
       if (
-        !roomCode ||
-        typeof roomCode !== "string"
+        typeof roomCode !== "string" ||
+        !roomCode.trim()
       ) {
         socket.emit("room:error", {
-          message: "Room code is required.",
+          message:
+            "Room code is required.",
         });
 
         return;
@@ -24,9 +29,14 @@ const registerRoomSocket = (io, socket) => {
       const normalizedRoomCode =
         roomCode.trim().toUpperCase();
 
-      if (!/^[A-Z0-9]{6}$/.test(normalizedRoomCode)) {
+      if (
+        !/^[A-Z0-9]{6}$/.test(
+          normalizedRoomCode
+        )
+      ) {
         socket.emit("room:error", {
-          message: "Invalid room code.",
+          message:
+            "Invalid room code.",
         });
 
         return;
@@ -35,76 +45,107 @@ const registerRoomSocket = (io, socket) => {
       const room = await Room.findOne({
         roomCode: normalizedRoomCode,
         isActive: true,
-      }).select("_id roomCode");
+      }).select(
+        "_id roomCode"
+      );
 
       if (!room) {
         socket.emit("room:error", {
-          message: "Room not found or is no longer active.",
+          message:
+            "Room not found or is no longer active.",
         });
 
         return;
       }
 
-      const membership = await RoomMember.findOne({
-        room: room._id,
-        user: socket.user.userId,
-        status: "active",
-      });
+      const membership =
+        await RoomMember.findOne({
+          room: room._id,
+          user: socket.user.userId,
+          status: "active",
+        });
 
       if (!membership) {
         socket.emit("room:error", {
-          message: "You are not an active member of this room.",
+          message:
+            "You are not an active member of this room.",
         });
 
         return;
       }
 
-      // Prevent the same socket from joining the same room twice.
-      if (socket.data.roomCode === room.roomCode) {
+      /*
+       * Already connected to this room.
+       */
+      if (
+        socket.data.roomCode ===
+        room.roomCode
+      ) {
         socket.emit("room:error", {
-          message: "You are already connected to this room.",
+          message:
+            "You are already connected to this room.",
         });
 
         return;
       }
 
-      // Leave any previous socket room first.
+      /*
+       * Leave previous socket room first.
+       */
       if (socket.data.roomCode) {
         leaveSocketRoom(io, socket);
       }
 
-      const socketRoom = `room:${room.roomCode}`;
+      const socketRoom =
+        `room:${room.roomCode}`;
 
       socket.join(socketRoom);
 
-      socket.data.roomCode = room.roomCode;
-      socket.data.roomId = room._id.toString();
+      socket.data.roomCode =
+        room.roomCode;
+
+      socket.data.roomId =
+        room._id.toString();
 
       addPresence(
         room.roomCode,
         socket.user.userId
       );
 
-      const presence = getRoomPresence(
-        room.roomCode
-      );
+      const presence =
+        getRoomPresence(
+          room.roomCode
+        );
 
-      socket.emit("room:joined", {
-        roomCode: room.roomCode,
-        user: {
-          userId: socket.user.userId,
-          name: socket.user.name,
-        },
-        presence,
-      });
+      socket.emit(
+        "room:joined",
+        {
+          roomCode:
+            room.roomCode,
+
+          user: {
+            userId:
+              socket.user.userId,
+
+            name:
+              socket.user.name,
+          },
+
+          presence,
+        }
+      );
 
       socket.to(socketRoom).emit(
         "room:user-joined",
         {
           user: {
-            userId: socket.user.userId,
-            name: socket.user.name,
+            userId:
+              socket.user.userId,
+
+            name:
+              socket.user.name,
           },
+
           presence,
         }
       );
@@ -115,10 +156,12 @@ const registerRoomSocket = (io, socket) => {
       );
 
       socket.emit("room:error", {
-        message: "Unable to join room.",
+        message:
+          "Unable to join room.",
       });
     }
-  });
+  }
+);
 
   socket.on("room:leave", () => {
     leaveSocketRoom(io, socket);

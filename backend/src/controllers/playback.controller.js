@@ -5,26 +5,81 @@ import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 
 const getPlaybackState = asyncHandler(async (req, res) => {
-  let playbackState = await PlaybackState.findOne({
-    room: req.room._id,
-  })
-    .populate("updatedBy", "_id name")
-    .lean();
+  const selectedMovieId =
+    req.room.selectedMovie?.movieId || null;
 
-  // A room may not have a playback state yet.
-  // Create the initial state when it is requested for the first time.
-  if (!playbackState) {
-    playbackState = await PlaybackState.create({
-      room: req.room._id,
-      isPlaying: false,
-      currentPosition: 0,
-      lastUpdatedAt: new Date(),
-      updatedBy: req.user.userId,
-    });
-
-    playbackState = await PlaybackState.findById(playbackState._id)
+  /*
+   * Find the playback state or create it atomically.
+   *
+   * This avoids the race condition where two requests
+   * simultaneously find no playback state and both try
+   * to create one.
+   */
+  const playbackState =
+    await PlaybackState.findOneAndUpdate(
+      {
+        room: req.room._id,
+      },
+      {
+        $setOnInsert: {
+          room: req.room._id,
+          movieId: selectedMovieId,
+          isPlaying: false,
+          currentPosition: 0,
+          lastUpdatedAt: new Date(),
+          updatedBy: req.user.userId,
+        },
+      },
+      {
+        new: true,
+        upsert: true,
+        setDefaultsOnInsert: true,
+        runValidators: true,
+      }
+    )
       .populate("updatedBy", "_id name")
       .lean();
+
+  /*
+   * If the room has a selected movie but the stored playback
+   * state belongs to another movie, return a fresh state.
+   *
+   * Normally selectMovie will reset this state, but this check
+   * protects us against stale data.
+   */
+  if (
+    selectedMovieId &&
+    playbackState.movieId !== selectedMovieId
+  ) {
+    const resetPlaybackState =
+      await PlaybackState.findOneAndUpdate(
+        {
+          room: req.room._id,
+        },
+        {
+          $set: {
+            movieId: selectedMovieId,
+            isPlaying: false,
+            currentPosition: 0,
+            lastUpdatedAt: new Date(),
+            updatedBy: req.user.userId,
+          },
+        },
+        {
+          new: true,
+          runValidators: true,
+        }
+      )
+        .populate("updatedBy", "_id name")
+        .lean();
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        resetPlaybackState,
+        "Playback state fetched successfully."
+      )
+    );
   }
 
   res.status(200).json(
@@ -37,7 +92,10 @@ const getPlaybackState = asyncHandler(async (req, res) => {
 });
 
 const updatePlaybackState = asyncHandler(async (req, res) => {
-  const { isPlaying, currentPosition } = req.body;
+  const {
+    isPlaying,
+    currentPosition,
+  } = req.body;
 
   if (typeof isPlaying !== "boolean") {
     throw new ApiError(
@@ -57,34 +115,51 @@ const updatePlaybackState = asyncHandler(async (req, res) => {
     );
   }
 
-  // Only the host controls playback.
-  if (req.room.host.toString() !== req.user.userId) {
+  // Only the host can control playback.
+  if (
+    req.room.host.toString() !==
+    req.user.userId
+  ) {
     throw new ApiError(
       403,
       "Only the room host can control playback."
     );
   }
 
-  const playbackState = await PlaybackState.findOneAndUpdate(
-    {
-      room: req.room._id,
-    },
-    {
-      $set: {
-        isPlaying,
-        currentPosition,
-        lastUpdatedAt: new Date(),
-        updatedBy: req.user.userId,
+  // A movie must be selected before playback can be updated.
+  const selectedMovieId =
+    req.room.selectedMovie?.movieId;
+
+  if (!selectedMovieId) {
+    throw new ApiError(
+      400,
+      "Select a movie before controlling playback."
+    );
+  }
+
+  const playbackState =
+    await PlaybackState.findOneAndUpdate(
+      {
+        room: req.room._id,
       },
-    },
-    {
-      new: true,
-      upsert: true,
-      runValidators: true,
-    }
-  )
-    .populate("updatedBy", "_id name")
-    .lean();
+      {
+        $set: {
+          movieId: selectedMovieId,
+          isPlaying,
+          currentPosition,
+          lastUpdatedAt: new Date(),
+          updatedBy: req.user.userId,
+        },
+      },
+      {
+        new: true,
+        upsert: true,
+        setDefaultsOnInsert: true,
+        runValidators: true,
+      }
+    )
+      .populate("updatedBy", "_id name")
+      .lean();
 
   res.status(200).json(
     new ApiResponse(

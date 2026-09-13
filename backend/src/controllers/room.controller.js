@@ -5,7 +5,8 @@ import RoomMember from "../models/RoomMember.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
-import generateRoomCode from "../utils/RoomCode.js";
+import generateRoomCode from "../utils/roomCode.js";
+import PlaybackState from "../models/PlaybackState.js";
 import {
   getRoomPresence as getOnlineUsers,
 } from "../services/presence.service.js";
@@ -352,121 +353,287 @@ const leaveRoom = asyncHandler(async (req, res) => {
   const room = req.room;
   const membership = req.roomMembership;
 
-  /*
-   * Normal member leaving.
-   */
-  if (membership.role !== "host") {
-    membership.status = "left";
-    membership.leftAt = new Date();
+  const session = await mongoose.startSession();
 
-    await membership.save();
+  try {
+    let responseData;
+    let responseMessage;
 
-    await Room.updateOne(
-      {
+    await session.withTransaction(async () => {
+      /*
+       * Re-fetch the room and membership inside the
+       * transaction so every decision is based on the
+       * latest database state.
+       */
+      const currentRoom = await Room.findOne({
         _id: room._id,
-        currentParticipants: { $gt: 0 },
-      },
-      {
-        $inc: {
-          currentParticipants: -1,
-        },
+        isActive: true,
+      }).session(session);
+
+      if (!currentRoom) {
+        throw new ApiError(
+          404,
+          "Room not found or is already closed."
+        );
       }
-    );
 
-    return res.status(200).json(
-      new ApiResponse(
-        200,
-        {
-          roomCode: room.roomCode,
-          roomActive: room.isActive,
+      const currentMembership =
+        await RoomMember.findOne({
+          _id: membership._id,
+          room: currentRoom._id,
+          user: req.user.userId,
+          status: "active",
+        }).session(session);
+
+      if (!currentMembership) {
+        throw new ApiError(
+          409,
+          "You are no longer an active member of this room."
+        );
+      }
+
+      /*
+       * -----------------------------------------
+       * CASE 1: Normal member leaves
+       * -----------------------------------------
+       */
+      if (currentMembership.role !== "host") {
+        currentMembership.status = "left";
+        currentMembership.leftAt = new Date();
+
+        await currentMembership.save({
+          session,
+        });
+
+        const updatedRoom =
+          await Room.findOneAndUpdate(
+            {
+              _id: currentRoom._id,
+              isActive: true,
+              currentParticipants: {
+                $gt: 0,
+              },
+            },
+            {
+              $inc: {
+                currentParticipants: -1,
+              },
+            },
+            {
+              new: true,
+              session,
+            }
+          );
+
+        if (!updatedRoom) {
+          throw new ApiError(
+            409,
+            "Unable to update room participant count."
+          );
+        }
+
+        responseData = {
+          roomCode: updatedRoom.roomCode,
+          roomActive: updatedRoom.isActive,
+
           membership: {
-            id: membership._id,
-            status: membership.status,
-            leftAt: membership.leftAt,
+            id: currentMembership._id,
+            status: currentMembership.status,
+            leftAt: currentMembership.leftAt,
           },
-        },
-        "You left the room successfully."
-      )
-    );
-  }
 
-  /*
-   * Host is leaving.
-   */
-  const nextHost = await RoomMember.findOne({
-    room: room._id,
-    status: "active",
-    _id: { $ne: membership._id },
-  }).sort({ joinedAt: 1 });
+          currentParticipants:
+            updatedRoom.currentParticipants,
+        };
 
-  /*
-   * Host was the only participant.
-   */
-  if (!nextHost) {
-    membership.status = "left";
-    membership.leftAt = new Date();
+        responseMessage =
+          "You left the room successfully.";
 
-    await membership.save();
+        return;
+      }
 
-    room.isActive = false;
-    room.currentParticipants = 0;
+      /*
+       * -----------------------------------------
+       * CASE 2: Host leaves
+       * -----------------------------------------
+       *
+       * Find the earliest active member.
+       *
+       * This gives us deterministic host transfer
+       * behaviour.
+       */
+      const nextHost =
+        await RoomMember.findOne({
+          room: currentRoom._id,
+          status: "active",
+          role: "member",
+          _id: {
+            $ne: currentMembership._id,
+          },
+        })
+          .sort({ joinedAt: 1 })
+          .session(session);
 
-    await room.save();
+      /*
+       * -----------------------------------------
+       * CASE 2A: Host is the only participant
+       * -----------------------------------------
+       */
+      if (!nextHost) {
+        currentMembership.status = "left";
+        currentMembership.leftAt = new Date();
+        currentMembership.role = "member";
 
-    return res.status(200).json(
-      new ApiResponse(
-        200,
-        {
-          roomCode: room.roomCode,
+        await currentMembership.save({
+          session,
+        });
+
+        const updatedRoom =
+          await Room.findOneAndUpdate(
+            {
+              _id: currentRoom._id,
+              isActive: true,
+            },
+            {
+              $set: {
+                isActive: false,
+                currentParticipants: 0,
+              },
+            },
+            {
+              new: true,
+              session,
+            }
+          );
+
+        if (!updatedRoom) {
+          throw new ApiError(
+            409,
+            "Unable to close the room."
+          );
+        }
+
+        /*
+         * There should normally be no other active
+         * members, but update them defensively inside
+         * the same transaction.
+         */
+        await RoomMember.updateMany(
+          {
+            room: currentRoom._id,
+            status: "active",
+          },
+          {
+            $set: {
+              status: "left",
+              leftAt: new Date(),
+            },
+          },
+          {
+            session,
+          }
+        );
+
+        responseData = {
+          roomCode: updatedRoom.roomCode,
           roomActive: false,
+          currentParticipants: 0,
+
           membership: {
-            id: membership._id,
-            status: membership.status,
-            leftAt: membership.leftAt,
+            id: currentMembership._id,
+            status: currentMembership.status,
+            leftAt: currentMembership.leftAt,
           },
-        },
-        "You left the room and the room has been closed."
-      )
-    );
-  }
+        };
 
-  /*
-   * Transfer host to the earliest active member.
-   */
-  membership.status = "left";
-  membership.leftAt = new Date();
-  membership.role = "member";
+        responseMessage =
+          "You left the room and the room has been closed.";
 
-  await membership.save();
+        return;
+      }
 
-  nextHost.role = "host";
-  await nextHost.save();
+      /*
+       * -----------------------------------------
+       * CASE 2B: Host leaves and transfers host
+       * -----------------------------------------
+       */
 
-  room.host = nextHost.user;
+      currentMembership.status = "left";
+      currentMembership.leftAt = new Date();
+      currentMembership.role = "member";
 
-  if (room.currentParticipants > 0) {
-    room.currentParticipants -= 1;
-  }
+      await currentMembership.save({
+        session,
+      });
 
-  await room.save();
+      nextHost.role = "host";
 
-  return res.status(200).json(
-    new ApiResponse(
-      200,
-      {
-        roomCode: room.roomCode,
-        roomActive: true,
+      await nextHost.save({
+        session,
+      });
+
+      const updatedRoom =
+        await Room.findOneAndUpdate(
+          {
+            _id: currentRoom._id,
+            isActive: true,
+            host: req.user.userId,
+            currentParticipants: {
+              $gt: 0,
+            },
+          },
+          {
+            $set: {
+              host: nextHost.user,
+            },
+            $inc: {
+              currentParticipants: -1,
+            },
+          },
+          {
+            new: true,
+            session,
+          }
+        );
+
+      if (!updatedRoom) {
+        throw new ApiError(
+          409,
+          "Unable to transfer room ownership."
+        );
+      }
+
+      responseData = {
+        roomCode: updatedRoom.roomCode,
+        roomActive: updatedRoom.isActive,
+
         previousHost: req.user.userId,
         newHost: nextHost.user,
+
         membership: {
-          id: membership._id,
-          status: membership.status,
-          leftAt: membership.leftAt,
+          id: currentMembership._id,
+          status: currentMembership.status,
+          leftAt: currentMembership.leftAt,
         },
-      },
-      "You left the room and host ownership was transferred."
-    )
-  );
+
+        currentParticipants:
+          updatedRoom.currentParticipants,
+      };
+
+      responseMessage =
+        "You left the room and host ownership was transferred.";
+    });
+
+    res.status(200).json(
+      new ApiResponse(
+        200,
+        responseData,
+        responseMessage
+      )
+    );
+  } finally {
+    await session.endSession();
+  }
 });
 
 const removeParticipant = asyncHandler(async (req, res) => {
@@ -841,95 +1008,179 @@ const selectMovie = asyncHandler(async (req, res) => {
   const {
     movieId,
     title,
-    posterUrl = null,
-    videoUrl = null,
+    posterUrl,
+    videoUrl,
   } = req.body;
 
-  if (!movieId) {
-    throw new ApiError(400, "Movie ID is required.");
-  }
-
-  if (typeof movieId !== "string") {
-    throw new ApiError(
-      400,
-      "Movie ID must be a string."
-    );
-  }
-
-  if (!title) {
-    throw new ApiError(400, "Movie title is required.");
-  }
-
-  if (typeof title !== "string") {
-    throw new ApiError(
-      400,
-      "Movie title must be a string."
-    );
-  }
-
-  const trimmedMovieId = movieId.trim();
-  const trimmedTitle = title.trim();
-
+  // -----------------------------
+  // Validate movieId
+  // -----------------------------
   if (
-    trimmedMovieId.length < 1 ||
-    trimmedMovieId.length > 100
+    typeof movieId !== "string" ||
+    !movieId.trim()
   ) {
     throw new ApiError(
       400,
-      "Movie ID is invalid."
+      "movieId is required."
     );
   }
 
+  // -----------------------------
+  // Validate title
+  // -----------------------------
   if (
-    trimmedTitle.length < 1 ||
-    trimmedTitle.length > 200
+    typeof title !== "string" ||
+    !title.trim()
   ) {
     throw new ApiError(
       400,
-      "Movie title must be between 1 and 200 characters."
+      "Movie title is required."
     );
   }
 
+  if (title.trim().length > 200) {
+    throw new ApiError(
+      400,
+      "Movie title cannot exceed 200 characters."
+    );
+  }
+
+  // -----------------------------
+  // Validate poster URL
+  // -----------------------------
   if (
+    posterUrl !== undefined &&
     posterUrl !== null &&
     typeof posterUrl !== "string"
   ) {
     throw new ApiError(
       400,
-      "Poster URL must be a string or null."
+      "posterUrl must be a string."
     );
   }
 
+  // -----------------------------
+  // Validate video URL
+  // -----------------------------
   if (
+    videoUrl !== undefined &&
     videoUrl !== null &&
     typeof videoUrl !== "string"
   ) {
     throw new ApiError(
       400,
-      "Video URL must be a string or null."
+      "videoUrl must be a string."
     );
   }
 
-  room.selectedMovie = {
-    movieId: trimmedMovieId,
-    title: trimmedTitle,
-    posterUrl: posterUrl?.trim() || null,
-    videoUrl: videoUrl?.trim() || null,
-  };
+  /*
+   * Use one transaction so that:
+   *
+   * Room movie selection
+   *        +
+   * Playback reset
+   *
+   * either both succeed or neither changes.
+   */
+  const session = await mongoose.startSession();
 
-  await room.save();
+  try {
+    let updatedRoom;
 
-  res.status(200).json(
-    new ApiResponse(
-      200,
-      {
-        roomCode: room.roomCode,
-        selectedMovie: room.selectedMovie,
-      },
-      "Movie selected successfully."
-    )
-  );
+    await session.withTransaction(async () => {
+      const currentRoom = await Room.findOne({
+        _id: room._id,
+        isActive: true,
+      }).session(session);
+
+      if (!currentRoom) {
+        throw new ApiError(
+          404,
+          "Room not found or is no longer active."
+        );
+      }
+
+      if (
+        currentRoom.host.toString() !==
+        req.user.userId
+      ) {
+        throw new ApiError(
+          403,
+          "Only the room host can select a movie."
+        );
+      }
+
+      const newMovieId = movieId.trim();
+
+      /*
+       * Store the new movie in the room.
+       */
+      currentRoom.selectedMovie = {
+        movieId: newMovieId,
+        title: title.trim(),
+        posterUrl:
+          typeof posterUrl === "string"
+            ? posterUrl.trim()
+            : null,
+        videoUrl:
+          typeof videoUrl === "string"
+            ? videoUrl.trim()
+            : null,
+      };
+
+      updatedRoom = await currentRoom.save({
+        session,
+      });
+
+      /*
+       * Reset playback for the newly selected movie.
+       *
+       * Even if a PlaybackState doesn't exist yet,
+       * create it here so the state is immediately
+       * synchronized with the selected movie.
+       */
+      await PlaybackState.findOneAndUpdate(
+        {
+          room: currentRoom._id,
+        },
+        {
+          $set: {
+            movieId: newMovieId,
+            isPlaying: false,
+            currentPosition: 0,
+            lastUpdatedAt: new Date(),
+            updatedBy: req.user.userId,
+          },
+          $setOnInsert: {
+            room: currentRoom._id,
+          },
+        },
+        {
+          upsert: true,
+          new: true,
+          setDefaultsOnInsert: true,
+          runValidators: true,
+          session,
+        }
+      );
+    });
+
+    res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          roomCode: updatedRoom.roomCode,
+          selectedMovie:
+            updatedRoom.selectedMovie,
+        },
+        "Movie selected successfully and playback has been reset."
+      )
+    );
+  } finally {
+    await session.endSession();
+  }
 });
+
 
 const getRoomPresence = asyncHandler(async (req, res) => {
   const presence = getOnlineUsers(
