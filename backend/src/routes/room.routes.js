@@ -20,6 +20,7 @@ import {
   closeRoom,
   updateRoom,
   selectMovie,
+  getRoomPresence,
 } from "../controllers/room.controller.js";
 
 const router = Router();
@@ -38,7 +39,13 @@ router.post("/", createRoom);
 router.post("/join", joinRoom);
 
 // Get details of a specific room
-router.get("/:roomCode", getRoomDetails);
+router.get("/:roomCode",requireRoomMember, getRoomDetails);
+
+router.get(
+  "/:roomCode/presence",
+  requireRoomMember,
+  getRoomPresence
+);
 
 router.post(
   "/:roomCode/leave",
@@ -75,5 +82,6 @@ router.patch(
   requireRoomHost,
   selectMovie
 );
+
 
 export default router;

@@ -6,6 +6,9 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import generateRoomCode from "../utils/RoomCode.js";
+import {
+  getRoomPresence as getOnlineUsers,
+} from "../services/presence.service.js";
 
 const createRoom = asyncHandler(async (req, res) => {
   const {
@@ -927,11 +930,31 @@ const selectMovie = asyncHandler(async (req, res) => {
     )
   );
 });
+
+const getRoomPresence = asyncHandler(async (req, res) => {
+  const presence = getOnlineUsers(
+    req.room.roomCode
+  );
+
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        roomCode: req.room.roomCode,
+        onlineUsers: presence,
+        onlineCount: presence.length,
+      },
+      "Room presence fetched successfully."
+    )
+  );
+});
+
 export {
   createRoom,
   joinRoom,
   getRoomDetails,
   leaveRoom,
+  getRoomPresence,
   selectMovie,
   updateRoom,
   transferHost,
