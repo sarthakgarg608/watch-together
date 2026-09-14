@@ -8,7 +8,7 @@ import {
 import {
   requireRoomMember,
   requireRoomHost,
-} from "./middleware/roomMiddleware.js";
+} from "../middleware/roomMiddleware.js";
 
 import {
   createRoom,

@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import Room from "../models/Room.js";
 import RoomMember from "../models/RoomMember.js";
-
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
@@ -142,6 +141,7 @@ const createRoom = asyncHandler(async (req, res) => {
     await session.endSession();
   }
 });
+
 const joinRoom = asyncHandler(async (req, res) => {
   const { roomCode } = req.body;
 
@@ -1180,7 +1180,6 @@ const selectMovie = asyncHandler(async (req, res) => {
     await session.endSession();
   }
 });
-
 
 const getRoomPresence = asyncHandler(async (req, res) => {
   const presence = getOnlineUsers(

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import authenticate from "../middleware/authMiddleware.js";
 
 import {
   registerUser,
@@ -44,12 +45,14 @@ router.post(
 
 router.post(
   "/send-verification-otp",
+  authenticate,
   otpRateLimiter,
   sendVerificationOtp
 );
 
 router.post(
   "/verify-email",
+  authenticate,
   otpRateLimiter,
   verifyEmail
 );

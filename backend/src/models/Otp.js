@@ -27,7 +27,7 @@ const otpSchema = new mongoose.Schema(
     expiresAt: {
       type: Date,
       required: true,
-      index: true,
+      
     },
 
     // Number of incorrect OTP attempts.
