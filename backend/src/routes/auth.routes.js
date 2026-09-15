@@ -2,10 +2,11 @@ import { Router } from "express";
 import authenticate from "../middleware/authMiddleware.js";
 
 import {
-  registerUser,
   loginUser,
   refreshAccessToken,
   logoutUser,
+  sendRegistrationOtp,
+  verifyRegistrationOtp,
   sendVerificationOtp,
   verifyEmail,
   forgotPassword,
@@ -20,11 +21,6 @@ import {
 
 const router = Router();
 
-router.post(
-  "/register",
-  authRateLimiter,
-  registerUser
-);
 
 router.post(
   "/login",
@@ -41,6 +37,18 @@ router.post(
 router.post(
   "/logout",
   logoutUser
+);
+
+router.post(
+  "/send-registration-otp",
+  otpRateLimiter,
+  sendRegistrationOtp
+);
+
+router.post(
+  "/verify-registration-otp",
+  otpRateLimiter,
+  verifyRegistrationOtp
 );
 
 router.post(

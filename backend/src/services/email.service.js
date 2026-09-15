@@ -21,13 +21,16 @@ async function sendOtpEmail({
   let subject;
   let heading;
 
-  if (purpose === "email-verification") {
-    subject = "Verify your Watch Together account";
-    heading = "Verify your email";
-  } else {
-    subject = "Reset your Watch Together password";
-    heading = "Reset your password";
-  }
+  if (purpose === "registration") {
+  subject = "Complete your Watch Together registration";
+  heading = "Verify your email to create your account";
+} else if (purpose === "email-verification") {
+  subject = "Verify your Watch Together account";
+  heading = "Verify your email";
+} else {
+  subject = "Reset your Watch Together password";
+  heading = "Reset your password";
+}
 
   await transporter.sendMail({
     from: `"Watch Together" <${env.smtpUser}>`,

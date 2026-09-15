@@ -74,17 +74,6 @@ function AuthProvider({ children }) {
   }
 
   // --------------------------------------------------
-  // Register
-  // --------------------------------------------------
-
-  async function register(userData) {
-    const response =
-      await authService.register(userData);
-
-    return response;
-  }
-
-  // --------------------------------------------------
   // Logout
   // --------------------------------------------------
 
@@ -138,7 +127,6 @@ function AuthProvider({ children }) {
       Boolean(accessToken && user),
 
     login,
-    register,
     logout,
     refreshAccessToken,
 
@@ -169,3 +157,4 @@ export {
   AuthProvider,
   useAuth,
 };
+
