@@ -1,9 +1,4 @@
-import {
-  Navigate,
-  Route,
-  Routes,
-  useLocation,
-} from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 
@@ -39,10 +34,7 @@ function AuthLoadingScreen() {
 // --------------------------------------------------
 
 function ProtectedRoute({ children }) {
-  const {
-    isAuthenticated,
-    loading,
-  } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
 
   const location = useLocation();
 
@@ -74,22 +66,14 @@ function ProtectedRoute({ children }) {
 // unnecessarily visit the authentication pages.
 
 function PublicOnlyRoute({ children }) {
-  const {
-    isAuthenticated,
-    loading,
-  } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return <AuthLoadingScreen />;
   }
 
   if (isAuthenticated) {
-    return (
-      <Navigate
-        to="/dashboard"
-        replace
-      />
-    );
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
@@ -98,7 +82,19 @@ function PublicOnlyRoute({ children }) {
 // --------------------------------------------------
 // Routes
 // --------------------------------------------------
+function HomeRoute() {
+  const { isAuthenticated, loading } = useAuth();
 
+  if (loading) {
+    return <AuthLoadingScreen />;
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <Home />;
+}
 function AppRoutes() {
   return (
     <Routes>
@@ -106,10 +102,7 @@ function AppRoutes() {
       {/* Public Routes */}
       {/* ------------------------------------------ */}
 
-      <Route
-        path="/"
-        element={<Home />}
-      />
+      <Route path="/" element={<HomeRoute />} />
 
       {/* ------------------------------------------ */}
       {/* Authentication Routes */}
@@ -133,20 +126,11 @@ function AppRoutes() {
         }
       />
 
-      <Route
-        path="/forgot-password"
-        element={<ForgotPassword />}
-      />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
 
-      <Route
-        path="/reset-password"
-        element={<ResetPassword />}
-      />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
-      <Route
-        path="/verify-email"
-        element={<VerifyEmail />}
-      />
+      <Route path="/verify-email" element={<VerifyEmail />} />
 
       {/* ------------------------------------------ */}
       {/* Protected Routes */}
@@ -201,10 +185,7 @@ function AppRoutes() {
       {/* 404 */}
       {/* ------------------------------------------ */}
 
-      <Route
-        path="*"
-        element={<NotFound />}
-      />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }

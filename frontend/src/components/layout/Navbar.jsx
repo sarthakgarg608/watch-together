@@ -23,15 +23,23 @@ function Navbar() {
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  // --------------------------------------------------
+  // Logout
+  // --------------------------------------------------
+
   const handleLogout = async () => {
     await logout();
 
     setIsMenuOpen(false);
 
-    navigate("/login", {
+    navigate("/", {
       replace: true,
     });
   };
+
+  // --------------------------------------------------
+  // Active navigation item
+  // --------------------------------------------------
 
   const isActive = (path) => {
     return location.pathname === path;
@@ -47,13 +55,12 @@ function Navbar() {
       "
     >
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-
         {/* ==================================================
             LOGO
         ================================================== */}
 
         <Link
-          to="/"
+          to={isAuthenticated ? "/dashboard" : "/"}
           className="group flex items-center gap-3"
           onClick={() => setIsMenuOpen(false)}
         >
@@ -77,9 +84,7 @@ function Navbar() {
 
           <span className="hidden text-base font-black tracking-tight sm:block">
             Watch
-            <span className="text-violet-400">
-              Together
-            </span>
+            <span className="text-violet-400">Together</span>
           </span>
         </Link>
 
@@ -88,12 +93,10 @@ function Navbar() {
         ================================================== */}
 
         <div className="hidden items-center gap-1 md:flex">
-
-          <NavLink
-            to="/"
-            label="Home"
-            active={isActive("/")}
-          />
+          {/* Home is only available to unauthenticated users */}
+          {!isAuthenticated && (
+            <NavLink to="/" label="Home" active={isActive("/")} />
+          )}
 
           {isAuthenticated && (
             <>
@@ -110,13 +113,12 @@ function Navbar() {
               />
 
               <NavLink
-                to="/join"
+                to="/rooms/join"
                 label="Join Room"
-                active={isActive("/join")}
+                active={isActive("/rooms/join")}
               />
             </>
           )}
-
         </div>
 
         {/* ==================================================
@@ -124,7 +126,6 @@ function Navbar() {
         ================================================== */}
 
         <div className="hidden items-center gap-3 md:flex">
-
           {isAuthenticated ? (
             <>
               <div
@@ -148,12 +149,7 @@ function Navbar() {
                     font-black
                   "
                 >
-                  {(
-                    user?.name ||
-                    "U"
-                  )
-                    .charAt(0)
-                    .toUpperCase()}
+                  {(user?.name || "U").charAt(0).toUpperCase()}
                 </span>
 
                 <span className="max-w-[100px] truncate text-xs font-semibold text-slate-300">
@@ -213,7 +209,6 @@ function Navbar() {
               </Link>
             </>
           )}
-
         </div>
 
         {/* ==================================================
@@ -224,11 +219,7 @@ function Navbar() {
           type="button"
           aria-label="Toggle navigation"
           aria-expanded={isMenuOpen}
-          onClick={() =>
-            setIsMenuOpen(
-              (previous) => !previous
-            )
-          }
+          onClick={() => setIsMenuOpen((previous) => !previous)}
           className="
             flex h-10 w-10
             items-center justify-center
@@ -243,7 +234,6 @@ function Navbar() {
         >
           {isMenuOpen ? "✕" : "☰"}
         </button>
-
       </nav>
 
       {/* ==================================================
@@ -257,23 +247,19 @@ function Navbar() {
           backdrop-blur-2xl
           transition-all duration-300
           md:hidden
-          ${
-            isMenuOpen
-              ? "max-h-[500px] opacity-100"
-              : "max-h-0 opacity-0"
-          }
+          ${isMenuOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"}
         `}
       >
         <div className="space-y-1 px-4 py-4">
-
-          <MobileNavLink
-            to="/"
-            label="Home"
-            active={isActive("/")}
-            onClick={() =>
-              setIsMenuOpen(false)
-            }
-          />
+          {/* Home is only available to unauthenticated users */}
+          {!isAuthenticated && (
+            <MobileNavLink
+              to="/"
+              label="Home"
+              active={isActive("/")}
+              onClick={() => setIsMenuOpen(false)}
+            />
+          )}
 
           {isAuthenticated && (
             <>
@@ -281,27 +267,21 @@ function Navbar() {
                 to="/dashboard"
                 label="Dashboard"
                 active={isActive("/dashboard")}
-                onClick={() =>
-                  setIsMenuOpen(false)
-                }
+                onClick={() => setIsMenuOpen(false)}
               />
 
               <MobileNavLink
                 to="/rooms/create"
                 label="Create Room"
                 active={isActive("/rooms/create")}
-                onClick={() =>
-                  setIsMenuOpen(false)
-                }
+                onClick={() => setIsMenuOpen(false)}
               />
 
               <MobileNavLink
-                to="/join"
+                to="/rooms/join"
                 label="Join Room"
-                active={isActive("/join")}
-                onClick={() =>
-                  setIsMenuOpen(false)
-                }
+                active={isActive("/rooms/join")}
+                onClick={() => setIsMenuOpen(false)}
               />
 
               <button
@@ -325,12 +305,9 @@ function Navbar() {
 
           {!isAuthenticated && (
             <div className="grid grid-cols-2 gap-2 pt-2">
-
               <Link
                 to="/login"
-                onClick={() =>
-                  setIsMenuOpen(false)
-                }
+                onClick={() => setIsMenuOpen(false)}
                 className="
                   rounded-xl
                   border border-white/10
@@ -345,9 +322,7 @@ function Navbar() {
 
               <Link
                 to="/register"
-                onClick={() =>
-                  setIsMenuOpen(false)
-                }
+                onClick={() => setIsMenuOpen(false)}
                 className="
                   rounded-xl
                   bg-gradient-to-r
@@ -360,13 +335,10 @@ function Navbar() {
               >
                 Register
               </Link>
-
             </div>
           )}
-
         </div>
       </div>
-
     </header>
   );
 }
@@ -375,11 +347,7 @@ function Navbar() {
 // Desktop nav item
 // ------------------------------------------------------
 
-function NavLink({
-  to,
-  label,
-  active,
-}) {
+function NavLink({ to, label, active }) {
   return (
     <Link
       to={to}
@@ -417,12 +385,7 @@ function NavLink({
 // Mobile nav item
 // ------------------------------------------------------
 
-function MobileNavLink({
-  to,
-  label,
-  active,
-  onClick,
-}) {
+function MobileNavLink({ to, label, active, onClick }) {
   return (
     <Link
       to={to}
