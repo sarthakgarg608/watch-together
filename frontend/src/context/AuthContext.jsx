@@ -1,108 +1,171 @@
-// AuthContext.jsx
-// ------------------------------------------------------
-// Central authentication state.
-//
-// Current version:
-// - Mock login
-// - User state
-// - Login / logout
-// - Authentication persistence using localStorage
-//
-// Later:
-// - Backend JWT
-// - Access token
-// - Refresh token
-// - /me API
-// ------------------------------------------------------
-
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
 import authService from "../services/authService";
 
 const AuthContext = createContext(null);
 
-const STORAGE_KEY = "watch_together_user";
-
-export function AuthProvider({ children }) {
+function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [accessToken, setAccessToken] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const [isLoading, setIsLoading] = useState(true);
-
-  // ----------------------------------------------------
-  // Restore user when application starts.
-  // ----------------------------------------------------
+  // --------------------------------------------------
+  // Restore session when the application starts
+  // --------------------------------------------------
 
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem(STORAGE_KEY);
-
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-    } catch (error) {
-      console.error("Failed to restore authentication:", error);
-
-      localStorage.removeItem(STORAGE_KEY);
-    } finally {
-      setIsLoading(false);
-    }
+    restoreSession();
   }, []);
 
-  const login = async (credentials) => {
-    setIsLoading(true);
-
+  async function restoreSession() {
     try {
-      const response = await authService.login(credentials);
+      const response =
+        await authService.refreshAccessToken();
 
-      if (!response?.success || !response?.data?.user) {
-        throw new Error("Invalid login response.");
+      if (
+        response.success &&
+        response.data?.accessToken
+      ) {
+        setAccessToken(
+          response.data.accessToken
+        );
+
+        if (response.data.user) {
+          setUser(response.data.user);
+        }
       }
-
-      const loggedInUser = response.data.user;
-
-      setUser(loggedInUser);
-
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(loggedInUser));
-
-      return response;
+    } catch {
+      // No valid refresh session.
+      // User simply remains logged out.
+      setAccessToken(null);
+      setUser(null);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  };
+  }
 
-  const logout = async () => {
+  // --------------------------------------------------
+  // Login
+  // --------------------------------------------------
+
+  async function login(credentials) {
+    const response =
+      await authService.login(credentials);
+
+    if (
+      response.success &&
+      response.data
+    ) {
+      setAccessToken(
+        response.data.accessToken
+      );
+
+      setUser(
+        response.data.user || null
+      );
+    }
+
+    return response;
+  }
+
+  // --------------------------------------------------
+  // Register
+  // --------------------------------------------------
+
+  async function register(userData) {
+    const response =
+      await authService.register(userData);
+
+    return response;
+  }
+
+  // --------------------------------------------------
+  // Logout
+  // --------------------------------------------------
+
+  async function logout() {
     try {
       await authService.logout();
-    } catch (error) {
-      console.error("Logout request failed:", error);
     } finally {
+      setAccessToken(null);
       setUser(null);
-
-      localStorage.removeItem(STORAGE_KEY);
     }
-  };
+  }
+
+  // --------------------------------------------------
+  // Refresh access token
+  // --------------------------------------------------
+
+  async function refreshAccessToken() {
+    const response =
+      await authService.refreshAccessToken();
+
+    if (
+      response.success &&
+      response.data?.accessToken
+    ) {
+      setAccessToken(
+        response.data.accessToken
+      );
+
+      if (response.data.user) {
+        setUser(response.data.user);
+      }
+
+      return response.data.accessToken;
+    }
+
+    throw new Error(
+      "Unable to refresh access token."
+    );
+  }
+
+  // --------------------------------------------------
+  // Context value
+  // --------------------------------------------------
 
   const value = {
     user,
-    setUser,
+    accessToken,
+    loading,
 
-    isAuthenticated: Boolean(user),
-
-    isLoading,
+    isAuthenticated:
+      Boolean(accessToken && user),
 
     login,
+    register,
     logout,
+    refreshAccessToken,
+
+    setUser,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext);
+function useAuth() {
+  const context =
+    useContext(AuthContext);
 
   if (!context) {
-    throw new Error("useAuth must be used inside AuthProvider");
+    throw new Error(
+      "useAuth must be used inside AuthProvider."
+    );
   }
 
   return context;
 }
+
+export {
+  AuthProvider,
+  useAuth,
+};

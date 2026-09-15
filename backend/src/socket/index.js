@@ -6,6 +6,7 @@ import socketAuth from "./socketAuth.js";
 import registerRoomSocket from "./room.socket.js";
 import registerPlaybackSocket from "./playback.socket.js";
 import registerChatSocket from "./chat.socket.js";
+import { setSocketIO } from "../services/socketService.js";
 
 function initializeSocket(server) {
   const io = new Server(server, {
@@ -14,7 +15,7 @@ function initializeSocket(server) {
       credentials: true,
     },
   });
-
+  setSocketIO(io);
   io.use(socketAuth);
 
   io.on("connection", (socket) => {

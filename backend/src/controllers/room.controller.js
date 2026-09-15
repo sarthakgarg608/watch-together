@@ -1165,17 +1165,28 @@ const selectMovie = asyncHandler(async (req, res) => {
       );
     });
 
-    res.status(200).json(
-      new ApiResponse(
-        200,
-        {
-          roomCode: updatedRoom.roomCode,
-          selectedMovie:
-            updatedRoom.selectedMovie,
-        },
-        "Movie selected successfully and playback has been reset."
-      )
-    );
+    const movieUpdate = {
+  roomCode: updatedRoom.roomCode,
+  selectedMovie: updatedRoom.selectedMovie,
+  playbackState: {
+    isPlaying: false,
+    currentPosition: 0,
+  },
+};
+
+emitToRoom(
+  updatedRoom.roomCode,
+  "room:movie-updated",
+  movieUpdate
+);
+
+res.status(200).json(
+  new ApiResponse(
+    200,
+    movieUpdate,
+    "Movie selected successfully and playback has been reset."
+  )
+);
   } finally {
     await session.endSession();
   }
