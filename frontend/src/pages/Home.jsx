@@ -1,308 +1,450 @@
-// Home.jsx
-// ------------------------------------------------------
-// Main landing page for Watch Together.
-//
-// Styling:
-// - Tailwind CSS
-// - Dark cinematic theme
-// - Glassmorphism
-// - Gradients
-// - Responsive layout
-// - Entrance animations
-// ------------------------------------------------------
-
-import { Link } from "react-router-dom";
+import {
+  Link,
+} from "react-router-dom";
 
 function Home() {
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
-      {/* ==================================================
-          BACKGROUND EFFECTS
-      ================================================== */}
+    <div className="relative min-h-screen overflow-hidden bg-[#05060b] text-white">
+
+      {/* ========================================== */}
+      {/* Background */}
+      {/* ========================================== */}
 
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-1/4 top-[-180px] h-[500px] w-[500px] rounded-full bg-violet-600/20 blur-[120px] animate-pulse-glow" />
+        <div className="absolute left-1/2 top-[-180px] h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-violet-600/[0.12] blur-[140px]" />
 
-        <div className="absolute right-[-120px] top-1/3 h-[450px] w-[450px] rounded-full bg-fuchsia-600/10 blur-[120px]" />
+        <div className="absolute -left-48 top-[35%] h-[450px] w-[450px] rounded-full bg-indigo-600/[0.06] blur-[130px]" />
 
-        <div className="absolute bottom-[-180px] left-[-100px] h-[400px] w-[400px] rounded-full bg-indigo-600/10 blur-[120px]" />
+        <div className="absolute -right-48 top-[55%] h-[450px] w-[450px] rounded-full bg-fuchsia-600/[0.05] blur-[130px]" />
 
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(139,92,246,0.08),transparent_45%)]" />
+        {/* Subtle grid */}
+        <div
+          className="absolute inset-0 opacity-[0.025]"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+            backgroundSize:
+              "60px 60px",
+          }}
+        />
       </div>
 
-      {/* ==================================================
-          NAVBAR
-      ================================================== */}
+      {/* ========================================== */}
+      {/* Navigation */}
+      {/* ========================================== */}
 
-      <nav className="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-5 sm:px-8 lg:px-10">
-        {/* Logo */}
+      <nav className="relative z-20 mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-5 sm:px-6 lg:px-8">
 
-        <Link to="/" className="group flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/20 transition duration-300 group-hover:scale-105 group-hover:shadow-violet-500/40">
-            <span className="text-lg">▶</span>
+        <Link
+          to="/"
+          className="group flex items-center gap-2.5"
+        >
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-violet-500/20 bg-violet-500/10 text-base shadow-lg shadow-violet-500/5 transition-transform duration-200 group-hover:scale-105">
+            🎬
           </div>
 
-          <span className="text-lg font-bold tracking-tight sm:text-xl">
+          <span className="text-sm font-black tracking-tight text-white sm:text-base">
             Watch
-            <span className="text-violet-400">Together</span>
+            <span className="text-violet-400">
+              Together
+            </span>
           </span>
         </Link>
 
-        {/* Navigation */}
-
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2">
           <Link
             to="/login"
-            className="rounded-xl px-3 py-2 text-sm font-medium text-slate-300 transition duration-300 hover:bg-white/5 hover:text-white sm:px-4"
+            className="rounded-xl px-3.5 py-2 text-[11px] font-semibold text-slate-400 transition-colors duration-200 hover:text-white sm:px-4"
           >
-            Login
+            Log in
           </Link>
 
           <Link
             to="/register"
-            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white backdrop-blur-md transition duration-300 hover:border-violet-400/30 hover:bg-violet-500/10 sm:px-5"
+            className="rounded-xl border border-violet-400/20 bg-violet-500/10 px-3.5 py-2 text-[11px] font-bold text-violet-300 transition-all duration-200 hover:border-violet-400/30 hover:bg-violet-500/15 hover:text-violet-200 sm:px-4"
           >
-            Register
+            Get Started
           </Link>
         </div>
       </nav>
 
-      {/* ==================================================
-          HERO
-      ================================================== */}
+      {/* ========================================== */}
+      {/* Hero */}
+      {/* ========================================== */}
 
-      <section className="relative z-10 mx-auto flex min-h-[calc(100vh-80px)] w-full max-w-7xl items-center px-5 pb-20 pt-12 sm:px-8 lg:px-10">
-        <div className="grid w-full items-center gap-14 lg:grid-cols-2 lg:gap-20">
-          {/* LEFT SIDE */}
+      <main className="relative z-10">
 
-          <div className="animate-fade-up">
-            {/* Small badge */}
+        <section className="mx-auto flex min-h-[calc(100vh-78px)] w-full max-w-7xl items-center justify-center px-5 pb-20 pt-10 sm:px-6 sm:pt-16 lg:px-8">
 
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-violet-400/20 bg-violet-500/10 px-4 py-2 text-xs font-medium text-violet-300 backdrop-blur-md sm:text-sm">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-              Watch together. Wherever you are.
+          <div className="w-full text-center">
+
+            {/* Badge */}
+            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.025] px-3.5 py-2 shadow-xl backdrop-blur-xl">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-50" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+              </span>
+
+              <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                Watch together, wherever you are
+              </span>
             </div>
 
             {/* Heading */}
-
-            <h1 className="max-w-3xl text-5xl font-black leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
+            <h1 className="mx-auto mt-7 max-w-5xl text-4xl font-black leading-[1.05] tracking-[-0.04em] text-white sm:text-6xl lg:text-7xl xl:text-8xl">
               Movies are better
-              <span className="block bg-gradient-to-r from-violet-400 via-fuchsia-400 to-pink-400 bg-clip-text text-transparent">
+              <span className="block bg-gradient-to-r from-violet-300 via-purple-300 to-indigo-300 bg-clip-text text-transparent">
                 together.
               </span>
             </h1>
 
             {/* Description */}
-
-            <p className="mt-7 max-w-xl text-base leading-7 text-slate-400 sm:text-lg sm:leading-8">
-              Create a private watch room, invite your friends, and enjoy movies
-              together with synchronized playback and real-time chat.
+            <p className="mx-auto mt-6 max-w-2xl text-sm leading-6 text-slate-500 sm:text-base sm:leading-7 lg:text-lg">
+              Create a private watch room, invite your
+              friends, and watch movies in sync with
+              real-time playback, chat, and presence.
             </p>
 
             {/* CTA */}
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
 
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Link
                 to="/register"
-                className="group relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-violet-900/30 transition duration-300 hover:-translate-y-0.5 hover:shadow-violet-500/30 sm:px-7"
+                className="group inline-flex items-center justify-center gap-2 rounded-xl bg-violet-500 px-6 py-3.5 text-xs font-bold text-white shadow-xl shadow-violet-500/20 transition-all duration-200 hover:bg-violet-400 hover:shadow-violet-500/30 active:scale-[0.98]"
               >
-                <span className="relative z-10">Get Started</span>
-
-                <span className="ml-2 transition-transform duration-300 group-hover:translate-x-1">
-                  →
-                </span>
+                Start Watching
+                <svg
+                  className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M5 12h14" />
+                  <path d="m13 6 6 6-6 6" />
+                </svg>
               </Link>
 
               <Link
                 to="/login"
-                className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-6 py-3.5 text-sm font-semibold text-slate-200 backdrop-blur-md transition duration-300 hover:border-white/20 hover:bg-white/10 sm:px-7"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.025] px-6 py-3.5 text-xs font-bold text-slate-300 transition-all duration-200 hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-white active:scale-[0.98]"
               >
                 I already have an account
               </Link>
             </div>
 
-            {/* Trust text */}
+            {/* ==================================== */}
+            {/* Product Preview */}
+            {/* ==================================== */}
 
-            <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-500">
-              <span className="flex items-center gap-2">
-                <span className="text-emerald-400">✓</span>
-                Private rooms
-              </span>
+            <div className="relative mx-auto mt-16 max-w-5xl sm:mt-20">
 
-              <span className="flex items-center gap-2">
-                <span className="text-emerald-400">✓</span>
-                Synchronized playback
-              </span>
+              {/* Glow behind preview */}
+              <div className="pointer-events-none absolute left-1/2 top-1/2 h-64 w-3/4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-600/[0.08] blur-[100px]" />
 
-              <span className="flex items-center gap-2">
-                <span className="text-emerald-400">✓</span>
-                Real-time chat
-              </span>
-            </div>
-          </div>
+              <div className="relative overflow-hidden rounded-2xl border border-white/[0.09] bg-[#090a11] p-2 shadow-[0_30px_100px_rgba(0,0,0,0.45)] sm:rounded-3xl sm:p-3">
 
-          {/* RIGHT SIDE — WATCH ROOM PREVIEW */}
+                {/* Browser top bar */}
+                <div className="flex h-8 items-center gap-1.5 px-2 sm:h-9">
+                  <span className="h-2 w-2 rounded-full bg-red-400/50" />
+                  <span className="h-2 w-2 rounded-full bg-amber-400/50" />
+                  <span className="h-2 w-2 rounded-full bg-emerald-400/50" />
 
-          <div className="relative animate-scale-in">
-            {/* Glow */}
-
-            <div className="absolute -inset-5 rounded-[2rem] bg-violet-600/10 blur-3xl" />
-
-            {/* Browser / room window */}
-
-            <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-900/80 shadow-2xl shadow-black/40 backdrop-blur-xl">
-              {/* Window header */}
-
-              <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-4 py-3">
-                <div className="flex gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-red-400/80" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-yellow-400/80" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-green-400/80" />
+                  <div className="mx-auto hidden h-5 w-1/3 rounded-md border border-white/[0.04] bg-white/[0.02] sm:block" />
                 </div>
 
-                <div className="rounded-md bg-white/5 px-3 py-1 text-[10px] text-slate-500">
-                  watch-together.app
-                </div>
+                {/* App preview */}
+                <div className="grid min-h-[270px] overflow-hidden rounded-xl border border-white/[0.06] bg-[#05060b] sm:min-h-[390px] sm:grid-cols-[1fr_220px] lg:grid-cols-[1fr_260px]">
 
-                <div className="w-10" />
-              </div>
+                  {/* Video */}
+                  <div className="flex min-w-0 flex-col">
+                    <div className="relative flex min-h-[210px] flex-1 items-center justify-center overflow-hidden bg-gradient-to-br from-[#11121c] via-[#080910] to-[#0a0911] sm:min-h-0">
 
-              {/* Video area */}
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(139,92,246,0.12),transparent_45%)]" />
 
-              <div className="relative aspect-video overflow-hidden bg-gradient-to-br from-slate-800 via-violet-950/50 to-slate-950">
-                {/* Fake movie scene */}
+                      <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.04] shadow-2xl sm:h-16 sm:w-16">
+                        <span className="ml-0.5 text-xl">
+                          ▶
+                        </span>
+                      </div>
 
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_65%_40%,rgba(168,85,247,0.45),transparent_25%),radial-gradient(circle_at_30%_70%,rgba(59,130,246,0.25),transparent_30%)]" />
+                      <div className="absolute bottom-4 left-4 right-4">
+                        <div className="mb-2 h-1 overflow-hidden rounded-full bg-white/[0.08]">
+                          <div className="h-full w-[38%] rounded-full bg-violet-500" />
+                        </div>
 
-                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent" />
+                        <div className="flex items-center justify-between">
+                          <span className="text-[8px] text-slate-500">
+                            24:18
+                          </span>
 
-                {/* Play button */}
-
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full border border-white/20 bg-white/10 shadow-2xl backdrop-blur-md transition duration-300 hover:scale-110 hover:bg-white/20">
-                    <span className="ml-1 text-xl">▶</span>
-                  </div>
-                </div>
-
-                {/* Movie title */}
-
-                <div className="absolute bottom-4 left-4">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-violet-300">
-                    Now Watching
-                  </p>
-
-                  <p className="mt-1 text-sm font-bold text-white">
-                    The Watch Party
-                  </p>
-                </div>
-              </div>
-
-              {/* Room controls */}
-
-              <div className="flex items-center justify-between border-t border-white/10 px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <div className="flex -space-x-2">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-500 text-[9px] font-bold">
-                      S
+                          <span className="text-[8px] text-slate-600">
+                            1:42:36
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-slate-900 bg-blue-500 text-[9px] font-bold">
-                      A
-                    </div>
+                    {/* Controls */}
+                    <div className="flex h-12 items-center gap-3 border-t border-white/[0.06] px-3 sm:h-14 sm:px-4">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/[0.05] text-[9px]">
+                        ▶
+                      </div>
 
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-slate-900 bg-pink-500 text-[9px] font-bold">
-                      R
+                      <span className="text-[8px] text-slate-600">
+                        10s
+                      </span>
+
+                      <div className="ml-auto flex items-center gap-2 rounded-full border border-emerald-500/10 bg-emerald-500/[0.05] px-2 py-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                        <span className="text-[7px] font-semibold text-emerald-300">
+                          Synced
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  <span className="text-xs text-slate-500">
-                    3 friends watching
-                  </span>
-                </div>
+                  {/* Chat Preview */}
+                  <div className="hidden border-l border-white/[0.06] bg-white/[0.015] sm:flex sm:flex-col">
 
-                <div className="flex items-center gap-1.5 text-xs text-emerald-400">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  Live
+                    <div className="border-b border-white/[0.06] px-4 py-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-bold text-white">
+                          Room Chat
+                        </span>
+
+                        <span className="flex items-center gap-1 text-[7px] text-emerald-400">
+                          <span className="h-1 w-1 rounded-full bg-emerald-400" />
+                          Live
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 space-y-4 p-3">
+                      <div className="flex gap-2">
+                        <div className="h-5 w-5 shrink-0 rounded-full bg-violet-500/15" />
+
+                        <div>
+                          <span className="text-[7px] text-violet-300">
+                            Alex
+                          </span>
+
+                          <div className="mt-1 rounded-lg rounded-tl-sm bg-white/[0.04] px-2 py-1.5">
+                            <p className="text-[7px] text-slate-400">
+                              This scene is so good 😂
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end">
+                        <div className="rounded-lg rounded-br-sm bg-violet-500 px-2.5 py-1.5">
+                          <p className="text-[7px] text-white">
+                            I know right!
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <div className="h-5 w-5 shrink-0 rounded-full bg-indigo-500/15" />
+
+                        <div>
+                          <span className="text-[7px] text-indigo-300">
+                            Sam
+                          </span>
+
+                          <div className="mt-1 rounded-lg rounded-tl-sm bg-white/[0.04] px-2 py-1.5">
+                            <p className="text-[7px] text-slate-400">
+                              Don't pause 😭
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="m-2 h-7 rounded-lg border border-white/[0.06] bg-white/[0.02]" />
+                  </div>
                 </div>
               </div>
             </div>
+          </div>
+        </section>
 
-            {/* Floating chat card */}
+        {/* ========================================== */}
+        {/* Features */}
+        {/* ========================================== */}
 
-            <div className="absolute -bottom-7 -left-5 hidden w-48 rounded-xl border border-white/10 bg-slate-900/90 p-3 shadow-xl backdrop-blur-xl sm:block">
-              <div className="mb-2 flex items-center gap-2">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-fuchsia-500 text-[9px] font-bold">
-                  A
-                </div>
+        <section className="mx-auto w-full max-w-7xl px-5 pb-24 sm:px-6 lg:px-8">
 
-                <span className="text-[10px] font-semibold text-slate-300">
-                  Alex
-                </span>
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-violet-400">
+              Built for shared moments
+            </p>
+
+            <h2 className="mt-3 text-2xl font-black tracking-tight text-white sm:text-3xl">
+              Everything you need to watch together
+            </h2>
+
+            <p className="mt-3 text-xs leading-6 text-slate-600 sm:text-sm">
+              A simple watch-party experience focused on
+              staying in sync and staying connected.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+
+            {/* Feature 1 */}
+            <div className="group rounded-2xl border border-white/[0.07] bg-white/[0.025] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-violet-500/20 hover:bg-white/[0.04]">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-violet-500/15 bg-violet-500/10 text-violet-300">
+                <svg
+                  className="h-5 w-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="9"
+                  />
+                  <path d="M12 8v4l3 2" />
+                </svg>
               </div>
 
-              <p className="text-[11px] text-slate-400">This scene is 🔥</p>
-            </div>
+              <h3 className="mt-5 text-sm font-bold text-white">
+                Stay in sync
+              </h3>
 
-            {/* Floating invite card */}
-
-            <div className="absolute -right-4 -top-5 hidden rounded-xl border border-white/10 bg-slate-900/90 px-4 py-3 shadow-xl backdrop-blur-xl sm:block">
-              <p className="text-[9px] uppercase tracking-wider text-slate-500">
-                Room Code
+              <p className="mt-2 text-xs leading-5 text-slate-600">
+                Play, pause, and seek together with
+                real-time playback synchronization.
               </p>
+            </div>
 
-              <p className="mt-1 text-sm font-bold tracking-[0.25em] text-violet-300">
-                W7K9Q
+            {/* Feature 2 */}
+            <div className="group rounded-2xl border border-white/[0.07] bg-white/[0.025] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-indigo-500/20 hover:bg-white/[0.04]">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-indigo-500/15 bg-indigo-500/10 text-indigo-300">
+                <svg
+                  className="h-5 w-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
+                  <circle
+                    cx="10"
+                    cy="7"
+                    r="4"
+                  />
+                  <path d="M21 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </div>
+
+              <h3 className="mt-5 text-sm font-bold text-white">
+                Invite your friends
+              </h3>
+
+              <p className="mt-2 text-xs leading-5 text-slate-600">
+                Share a room code or invitation and bring
+                your group into the same watch party.
+              </p>
+            </div>
+
+            {/* Feature 3 */}
+            <div className="group rounded-2xl border border-white/[0.07] bg-white/[0.025] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/20 hover:bg-white/[0.04]">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-500/15 bg-emerald-500/10 text-emerald-300">
+                <svg
+                  className="h-5 w-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+                  <path d="M8 10h.01" />
+                  <path d="M12 10h.01" />
+                  <path d="M16 10h.01" />
+                </svg>
+              </div>
+
+              <h3 className="mt-5 text-sm font-bold text-white">
+                Chat in real time
+              </h3>
+
+              <p className="mt-2 text-xs leading-5 text-slate-600">
+                React to scenes, talk with your friends,
+                and keep the conversation inside the room.
               </p>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ==================================================
-          FEATURE STRIP
-      ================================================== */}
+        {/* ========================================== */}
+        {/* Final CTA */}
+        {/* ========================================== */}
 
-      <section className="relative z-10 border-t border-white/5 bg-white/[0.02]">
-        <div className="mx-auto grid max-w-7xl gap-px sm:grid-cols-3">
-          <Feature
-            icon="▶"
-            title="Synchronized Playback"
-            description="Everyone watches the same moment together."
-          />
+        <section className="mx-auto max-w-5xl px-5 pb-20 sm:px-6 lg:px-8">
 
-          <Feature
-            icon="💬"
-            title="Real-Time Chat"
-            description="Talk, react and share the experience."
-          />
+          <div className="relative overflow-hidden rounded-3xl border border-violet-500/10 bg-violet-500/[0.035] px-6 py-12 text-center sm:px-10 sm:py-16">
 
-          <Feature
-            icon="👥"
-            title="Invite Friends"
-            description="Create a room and bring your friends in."
-          />
-        </div>
-      </section>
-    </main>
-  );
-}
+            <div className="pointer-events-none absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-500/[0.08] blur-[90px]" />
 
-// ======================================================
-// FEATURE COMPONENT
-// ======================================================
+            <div className="relative">
+              <span className="text-2xl">
+                🍿
+              </span>
 
-function Feature({ icon, title, description }) {
-  return (
-    <div className="group border-white/5 px-6 py-8 transition duration-300 hover:bg-white/[0.03] sm:border-r last:border-r-0">
-      <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10 text-lg text-violet-300 transition duration-300 group-hover:scale-110 group-hover:bg-violet-500/20">
-        {icon}
-      </div>
+              <h2 className="mx-auto mt-4 max-w-xl text-2xl font-black tracking-tight text-white sm:text-3xl">
+                Your next movie night starts here.
+              </h2>
 
-      <h2 className="text-sm font-bold text-white">{title}</h2>
+              <p className="mx-auto mt-3 max-w-lg text-xs leading-6 text-slate-600 sm:text-sm">
+                Create your room, invite your friends,
+                and make distance feel a little smaller.
+              </p>
 
-      <p className="mt-2 text-xs leading-5 text-slate-500">{description}</p>
+              <Link
+                to="/register"
+                className="mt-7 inline-flex items-center gap-2 rounded-xl bg-violet-500 px-6 py-3.5 text-xs font-bold text-white shadow-xl shadow-violet-500/20 transition-all duration-200 hover:bg-violet-400 hover:shadow-violet-500/30 active:scale-[0.98]"
+              >
+                Create Your Room
+                <span>→</span>
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================== */}
+        {/* Footer */}
+        {/* ========================================== */}
+
+        <footer className="border-t border-white/[0.05]">
+          <div className="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-6 text-center sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:text-left lg:px-8">
+            <p className="text-[10px] text-slate-700">
+              © {new Date().getFullYear()} Watch Together
+            </p>
+
+            <p className="text-[10px] text-slate-700">
+              Watch together. Stay connected.
+            </p>
+          </div>
+        </footer>
+
+      </main>
     </div>
   );
 }
 
 export default Home;
+

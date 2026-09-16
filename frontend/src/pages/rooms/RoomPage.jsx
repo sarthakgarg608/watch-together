@@ -1,87 +1,97 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
-import { useNavigate, useParams } from "react-router-dom";
+import {
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 
-import { useRoom } from "../../context/RoomContext";
+import {
+  useAuth,
+} from "../../context/AuthContext";
 
-import { useAuth } from "../../context/AuthContext";
+import {
+  useRoom,
+} from "../../context/RoomContext";
 
+import MovieSelector from "../../components/room/MovieSelector";
 import VideoPlayer from "../../components/video/VideoPlayer";
 import PlaybackControls from "../../components/video/PlaybackControls";
 import ChatPanel from "../../components/chat/ChatPanel";
-import MovieSelector from "../../components/room/MovieSelector";
 
 function RoomPage() {
-  const { roomCode } = useParams();
+  const {
+    roomCode,
+  } = useParams();
 
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
-  const { accessToken } = useAuth();
+  const {
+    accessToken,
+  } = useAuth();
 
   const {
     room,
     selectedMovie,
     participants,
-
     playbackState,
     playbackError,
-
     loading,
-
     isConnected,
     connectionError,
     roomJoined,
-
+    presence,
     loadRoom,
     leaveRoom,
-
     playVideo,
     pauseVideo,
     seekVideo,
   } = useRoom();
 
-  const [error, setError] = useState("");
+  const [
+    error,
+    setError,
+  ] = useState("");
 
-  const [duration, setDuration] = useState(0);
+  const [
+    duration,
+    setDuration,
+  ] = useState(0);
 
-  /*
-   * Fullscreen handler is exposed by VideoPlayer
-   * and consumed by PlaybackControls.
-   */
-  const fullscreenHandlerRef = useRef(null);
+  const fullscreenHandlerRef =
+    useRef(null);
 
-  /*
-   * Used to distinguish:
-   *
-   * 1. Local user interaction
-   * 2. Remote Socket.IO synchronization
-   *
-   * This prevents video events from creating
-   * unnecessary playback loops.
-   */
-  const isRemoteUpdateRef = useRef(false);
+  const isRemoteUpdateRef =
+    useRef(false);
 
   // --------------------------------------------------
   // Load Room
   // --------------------------------------------------
 
   useEffect(() => {
-    if (!roomCode || !accessToken) {
-      return;
+    if (
+      roomCode &&
+      accessToken
+    ) {
+      loadRoom(
+        roomCode,
+        accessToken
+      ).catch((error) => {
+        setError(
+          error.message ||
+            "Unable to load room."
+        );
+      });
     }
-
-    async function loadRoomData() {
-      try {
-        setError("");
-
-        await loadRoom(roomCode);
-      } catch (error) {
-        setError(error.message || "Unable to load this room.");
-      }
-    }
-
-    loadRoomData();
-  }, [roomCode, accessToken]);
+  }, [
+    roomCode,
+    accessToken,
+    loadRoom,
+  ]);
 
   // --------------------------------------------------
   // Leave Room
@@ -90,149 +100,249 @@ function RoomPage() {
   async function handleLeaveRoom() {
     try {
       await leaveRoom();
-
-      navigate("/dashboard");
+      navigate(
+        "/dashboard",
+        { replace: true }
+      );
     } catch (error) {
-      setError(error.message || "Unable to leave the room.");
+      setError(
+        error.message ||
+          "Unable to leave room."
+      );
     }
   }
 
   // --------------------------------------------------
-  // Play / Pause
+  // Playback Controls
   // --------------------------------------------------
 
   function handlePlayPause() {
-    /*
-     * Only the host is allowed to control
-     * playback on the backend.
-     *
-     * The backend will reject non-host users.
-     */
-    if (!room || !selectedMovie) {
+    if (!selectedMovie) {
       return;
     }
 
-    const currentPosition = playbackState.currentPosition || 0;
-
-    if (playbackState.isPlaying) {
-      pauseVideo(currentPosition);
+    if (
+      playbackState?.isPlaying
+    ) {
+      pauseVideo(
+        playbackState.currentPosition
+      );
     } else {
-      playVideo(currentPosition);
+      playVideo(
+        playbackState?.currentPosition ||
+          0
+      );
     }
   }
 
-  // --------------------------------------------------
-  // Seek
-  // --------------------------------------------------
-
-  function handleSeek(nextPosition) {
-    if (!room || !selectedMovie) {
+  function handleSeek(
+    position
+  ) {
+    if (!selectedMovie) {
       return;
     }
 
-    seekVideo(nextPosition, playbackState.isPlaying);
+    seekVideo(position);
   }
 
   // --------------------------------------------------
-  // Video Time Update
+  // Video Events
   // --------------------------------------------------
 
-  function handleTimeUpdate(currentTime) {
+  function handleTimeUpdate() {
     /*
-     * We intentionally do NOT send every
-     * timeupdate event through Socket.IO.
+     * Local time updates intentionally do not emit
+     * socket events on every video frame.
      *
-     * HTML video can generate many timeupdate
-     * events per second.
-     *
-     * Playback synchronization happens only
-     * on play / pause / seek.
+     * Playback synchronization is handled through
+     * explicit play / pause / seek events.
      */
-    if (!Number.isFinite(currentTime)) {
-      return;
-    }
   }
 
-  // --------------------------------------------------
-  // Video Play State Change
-  // --------------------------------------------------
-
-  function handlePlayStateChange(isPlaying) {
-    /*
-     * When playback changes because of a remote
-     * Socket.IO update, don't emit another event.
-     */
-    if (isRemoteUpdateRef.current) {
+  function handlePlayStateChange(
+    isPlaying
+  ) {
+    if (
+      isRemoteUpdateRef.current
+    ) {
       return;
     }
 
     /*
-     * We intentionally don't emit from here.
-     *
-     * PlaybackControls is the source of explicit
-     * host playback commands.
+     * VideoPlayer reports local browser state.
+     * The authoritative room state is managed by
+     * RoomContext / Socket.IO.
      */
-    void isPlaying;
   }
 
-  // --------------------------------------------------
-  // Fullscreen
-  // --------------------------------------------------
+  function handleDurationChange(
+    value
+  ) {
+    setDuration(
+      Number(value) || 0
+    );
+  }
+
+  function registerFullscreenHandler(
+    handler
+  ) {
+    fullscreenHandlerRef.current =
+      handler;
+  }
 
   function handleFullscreen() {
     fullscreenHandlerRef.current?.();
   }
 
   // --------------------------------------------------
-  // Register Fullscreen Handler
+  // Error State
   // --------------------------------------------------
 
-  function registerFullscreenHandler(handler) {
-    fullscreenHandlerRef.current = handler;
-  }
+  const roomError =
+    error ||
+    playbackError ||
+    connectionError;
 
   // --------------------------------------------------
   // Loading
   // --------------------------------------------------
 
-  if (loading && !room) {
+  if (
+    loading &&
+    !room
+  ) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#05060d] px-6 text-white">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-white/10 border-t-violet-500" />
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#05060b] px-6">
+        <div className="absolute left-1/2 top-1/3 h-80 w-80 -translate-x-1/2 rounded-full bg-violet-600/10 blur-[120px]" />
 
-          <p className="text-sm text-slate-400">Loading room...</p>
+        <div className="relative text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.03] shadow-2xl">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/10 border-t-violet-500" />
+          </div>
+
+          <h2 className="mt-5 text-sm font-bold text-white">
+            Joining room...
+          </h2>
+
+          <p className="mt-1.5 text-xs text-slate-500">
+            Preparing your watch party
+          </p>
         </div>
-      </main>
+      </div>
     );
   }
 
   // --------------------------------------------------
-  // Error
+  // Room Error
   // --------------------------------------------------
 
-  if (error && !room) {
+  if (
+    !room &&
+    roomError
+  ) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#05060d] px-6 text-white">
-        <div className="max-w-md text-center">
-          <h1 className="text-xl font-bold">Unable to open room</h1>
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#05060b] px-6">
+        <div className="absolute left-1/2 top-1/3 h-80 w-80 -translate-x-1/2 rounded-full bg-red-600/10 blur-[120px]" />
 
-          <p className="mt-3 text-sm text-slate-400">{error}</p>
+        <div className="relative w-full max-w-md rounded-3xl border border-white/[0.08] bg-white/[0.025] p-7 text-center shadow-2xl">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-red-500/10 bg-red-500/[0.06] text-xl">
+            !
+          </div>
+
+          <h2 className="mt-5 text-lg font-bold text-white">
+            Unable to open room
+          </h2>
+
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            {roomError}
+          </p>
 
           <button
             type="button"
-            onClick={() => navigate("/dashboard")}
-            className="mt-6 rounded-xl bg-violet-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-400"
+            onClick={() =>
+              navigate(
+                "/dashboard"
+              )
+            }
+            className="mt-6 rounded-xl bg-violet-500 px-5 py-2.5 text-xs font-bold text-white transition-all duration-200 hover:bg-violet-400 active:scale-95"
           >
             Back to Dashboard
           </button>
         </div>
-      </main>
+      </div>
     );
   }
 
-  if (!room) {
-    return null;
+  // --------------------------------------------------
+  // Participant Helpers
+  // --------------------------------------------------
+
+  function isParticipantOnline(
+    participant
+  ) {
+    const participantId =
+      participant.user?._id ||
+      participant.user?.userId ||
+      participant.userId ||
+      participant._id;
+
+    if (
+      !Array.isArray(
+        presence
+      )
+    ) {
+      return false;
+    }
+
+    return presence.some(
+      (onlineUser) => {
+        const onlineUserId =
+          onlineUser.userId ||
+          onlineUser._id ||
+          onlineUser.user?._id;
+
+        return (
+          String(
+            onlineUserId
+          ) ===
+          String(
+            participantId
+          )
+        );
+      }
+    );
+  }
+
+  function getParticipantName(
+    participant
+  ) {
+    return (
+      participant.user?.name ||
+      participant.name ||
+      "User"
+    );
+  }
+
+  function getParticipantId(
+    participant
+  ) {
+    return (
+      participant.user?._id ||
+      participant.user?.userId ||
+      participant.userId ||
+      participant._id
+    );
+  }
+
+  function getInitial(
+    name
+  ) {
+    return (
+      name
+        ?.charAt(0)
+        .toUpperCase() ||
+      "U"
+    );
   }
 
   // --------------------------------------------------
@@ -240,201 +350,299 @@ function RoomPage() {
   // --------------------------------------------------
 
   return (
-    <main className="min-h-screen bg-[#05060d] px-3 py-4 text-white sm:px-5 lg:px-8">
-      <div className="mx-auto max-w-[1600px]">
-        {/* ---------------------------------------- */}
+    <div className="min-h-screen overflow-x-hidden bg-[#05060b] text-white">
+
+      {/* Background */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -left-40 top-0 h-96 w-96 rounded-full bg-violet-600/[0.07] blur-[130px]" />
+        <div className="absolute -right-40 top-1/3 h-96 w-96 rounded-full bg-indigo-600/[0.05] blur-[130px]" />
+      </div>
+
+      <div className="relative mx-auto w-full max-w-[1800px] px-3 py-3 sm:px-5 sm:py-5 lg:px-7">
+
+        {/* ========================================== */}
         {/* Room Header */}
-        {/* ---------------------------------------- */}
+        {/* ========================================== */}
 
-        <header className="mb-4 flex flex-col gap-4 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-4 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="truncate text-xl font-bold sm:text-2xl">
-                {room.name}
-              </h1>
+        <header className="mb-4 rounded-2xl border border-white/[0.07] bg-white/[0.025] px-4 py-3 shadow-xl backdrop-blur-xl sm:px-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
-              <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-2.5 py-1 font-mono text-[10px] font-semibold tracking-wider text-violet-300">
-                {room.roomCode}
-              </span>
-            </div>
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-violet-500/15 bg-violet-500/10 text-lg">
+                🎬
+              </div>
 
-            {room.description && (
-              <p className="mt-1 text-sm text-slate-500">{room.description}</p>
-            )}
-          </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="truncate text-sm font-bold text-white sm:text-base">
+                    {room?.name ||
+                      "Watch Room"}
+                  </h1>
 
-          <button
-            type="button"
-            onClick={handleLeaveRoom}
-            className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-500/15"
-          >
-            Leave Room
-          </button>
-        </header>
-
-        {/* ---------------------------------------- */}
-        {/* Connection Status */}
-        {/* ---------------------------------------- */}
-
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.025] px-3 py-1.5">
-            <span
-              className={`h-2 w-2 rounded-full ${
-                isConnected ? "bg-emerald-400" : "bg-amber-400"
-              }`}
-            />
-
-            <span className="text-xs text-slate-400">
-              {isConnected
-                ? roomJoined
-                  ? "Live"
-                  : "Connected"
-                : "Connecting..."}
-            </span>
-          </div>
-
-          {connectionError && (
-            <span className="text-xs text-amber-400">{connectionError}</span>
-          )}
-
-          {playbackError && (
-            <span className="text-xs text-red-400">{playbackError}</span>
-          )}
-        </div>
-        {/* Movie Selector */}
-        <MovieSelector />
-
-        {/* ---------------------------------------- */}
-        {/* Main Room Layout */}
-        {/* ---------------------------------------- */}
-
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-          {/* -------------------------------------- */}
-          {/* Video Area */}
-          {/* -------------------------------------- */}
-
-          <section className="min-w-0 overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.02]">
-            {/* Movie Title */}
-            <div className="border-b border-white/[0.08] px-4 py-3 sm:px-5">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Now Watching
-                  </p>
-
-                  <h2 className="mt-1 truncate text-base font-bold text-white sm:text-lg">
-                    {selectedMovie?.title || "No movie selected"}
-                  </h2>
+                  <span className="rounded-md border border-white/[0.07] bg-white/[0.03] px-2 py-0.5 font-mono text-[9px] font-semibold tracking-widest text-slate-400">
+                    {room?.roomCode ||
+                      roomCode}
+                  </span>
                 </div>
 
-                {selectedMovie && (
-                  <span className="hidden rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-[10px] text-slate-500 sm:block">
-                    Synchronized playback
-                  </span>
+                {room?.description && (
+                  <p className="mt-1 max-w-xl truncate text-[10px] text-slate-600 sm:text-xs">
+                    {room.description}
+                  </p>
                 )}
               </div>
             </div>
 
-            {/* Video */}
-            <VideoPlayer
-              movie={selectedMovie}
-              isPlaying={playbackState.isPlaying}
-              currentTime={playbackState.currentPosition}
-              onTimeUpdate={handleTimeUpdate}
-              onDurationChange={setDuration}
-              onPlayStateChange={handlePlayStateChange}
-              registerFullscreenHandler={registerFullscreenHandler}
-            />
+            <div className="flex items-center gap-2">
 
-            {/* Controls */}
-            <PlaybackControls
-              isPlaying={playbackState.isPlaying}
-              currentTime={playbackState.currentPosition}
-              duration={duration}
-              onPlayPause={handlePlayPause}
-              onSeek={handleSeek}
-              onFullscreen={handleFullscreen}
-            />
-          </section>
+              {/* Socket status */}
+              <div
+                className={`flex items-center gap-2 rounded-xl border px-3 py-2 ${
+                  isConnected
+                    ? "border-emerald-500/10 bg-emerald-500/[0.05]"
+                    : "border-amber-500/10 bg-amber-500/[0.05]"
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    isConnected
+                      ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"
+                      : "animate-pulse bg-amber-400"
+                  }`}
+                />
 
-          {/* -------------------------------------- */}
-          {/* Sidebar */}
-          {/* -------------------------------------- */}
-
-          <aside className="flex min-h-0 flex-col gap-4">
-            {/* Participants */}
-            <section className="rounded-2xl border border-white/[0.08] bg-white/[0.025] p-4 backdrop-blur-xl">
-              <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <h2 className="text-sm font-bold">Participants</h2>
-
-                  <p className="mt-0.5 text-[10px] text-slate-500">
-                    {participants.length} member
-                    {participants.length !== 1 ? "s" : ""}
-                  </p>
-                </div>
-
-                <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-300">
-                  {Array.isArray(participants) ? participants.length : 0}
+                <span
+                  className={`hidden text-[9px] font-semibold sm:block ${
+                    isConnected
+                      ? "text-emerald-300"
+                      : "text-amber-300"
+                  }`}
+                >
+                  {isConnected
+                    ? "Connected"
+                    : "Connecting"}
                 </span>
               </div>
 
-              <div className="space-y-2">
-                {participants.map((participant) => {
-                  const participantUser = participant.user || participant;
+              <button
+                type="button"
+                onClick={
+                  handleLeaveRoom
+                }
+                className="rounded-xl border border-red-500/10 bg-red-500/[0.04] px-3 py-2 text-[10px] font-semibold text-red-400 transition-all duration-200 hover:border-red-500/20 hover:bg-red-500/[0.08] hover:text-red-300 active:scale-95"
+              >
+                Leave
+              </button>
+            </div>
+          </div>
+        </header>
 
-                  const participantId =
-                    participantUser._id || participantUser.userId;
+        {/* ========================================== */}
+        {/* Main Room Grid */}
+        {/* ========================================== */}
 
-                  const participantName = participantUser.name || "User";
+        <main className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
 
-                  const isOnline = presence.some(
-                    (onlineUser) => onlineUser.userId === String(participantId),
-                  );
+          {/* ======================================== */}
+          {/* Left Content */}
+          {/* ======================================== */}
 
-                  return (
-                    <div
-                      key={participantId}
-                      className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5"
-                    >
-                      <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500/30 to-fuchsia-500/20 text-xs font-bold text-violet-200">
-                        {participantName.charAt(0).toUpperCase()}
+          <section className="min-w-0 space-y-4">
 
-                        <span
-                          className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0b0c14] ${
-                            isOnline ? "bg-emerald-400" : "bg-slate-600"
-                          }`}
-                        />
-                      </div>
+            {/* Movie Selector */}
+            <MovieSelector />
 
-                      <div className="min-w-0">
-                        <p className="truncate text-xs font-semibold text-slate-200">
-                          {participantName}
-                        </p>
+            {/* Video Card */}
+            <section className="overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] shadow-2xl">
 
-                        <p className="text-[10px] text-slate-500">
-                          {participant.role === "host"
-                            ? "Host"
-                            : isOnline
-                              ? "Online"
-                              : "Offline"}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="relative">
+                <VideoPlayer
+                  movie={
+                    selectedMovie
+                  }
+                  playbackState={
+                    playbackState
+                  }
+                  onTimeUpdate={
+                    handleTimeUpdate
+                  }
+                  onPlayStateChange={
+                    handlePlayStateChange
+                  }
+                  onDurationChange={
+                    handleDurationChange
+                  }
+                  registerFullscreenHandler={
+                    registerFullscreenHandler
+                  }
+                />
+              </div>
+
+              {/* Playback Controls */}
+              <div className="border-t border-white/[0.06] bg-black/20">
+                <PlaybackControls
+                  isPlaying={
+                    playbackState?.isPlaying
+                  }
+                  currentTime={
+                    playbackState?.currentPosition ||
+                    0
+                  }
+                  duration={
+                    duration
+                  }
+                  onPlayPause={
+                    handlePlayPause
+                  }
+                  onSeek={
+                    handleSeek
+                  }
+                  onFullscreen={
+                    handleFullscreen
+                  }
+                />
               </div>
             </section>
 
-            {/* Chat */}
-            <section className="min-h-[420px] flex-1 overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.025] backdrop-blur-xl">
-              <ChatPanel />
+            {/* ====================================== */}
+            {/* Participants */}
+            {/* ====================================== */}
+
+            <section className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4 shadow-xl sm:p-5">
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-bold text-white">
+                    Watching Together
+                  </h2>
+
+                  <p className="mt-0.5 text-[10px] text-slate-600">
+                    People currently in this room
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-1.5 rounded-full border border-white/[0.06] bg-white/[0.025] px-2.5 py-1">
+                  <span className="text-[10px] font-bold text-slate-300">
+                    {participants?.length ||
+                      0}
+                  </span>
+
+                  <span className="text-[9px] text-slate-600">
+                    members
+                  </span>
+                </div>
+              </div>
+
+              {participants?.length ? (
+                <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+                  {participants.map(
+                    (
+                      participant
+                    ) => {
+                      const name =
+                        getParticipantName(
+                          participant
+                        );
+
+                      const participantId =
+                        getParticipantId(
+                          participant
+                        );
+
+                      const online =
+                        isParticipantOnline(
+                          participant
+                        );
+
+                      const isHost =
+                        String(
+                          participant.role
+                        ).toLowerCase() ===
+                        "host";
+
+                      return (
+                        <div
+                          key={
+                            participantId
+                          }
+                          className="group flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 transition-all duration-200 hover:border-white/[0.1] hover:bg-white/[0.04]"
+                        >
+                          <div className="relative shrink-0">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full border border-violet-500/10 bg-violet-500/[0.08] text-[10px] font-bold text-violet-300">
+                              {getInitial(
+                                name
+                              )}
+                            </div>
+
+                            <span
+                              className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#090a10] ${
+                                online
+                                  ? "bg-emerald-400"
+                                  : "bg-slate-700"
+                              }`}
+                            />
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[10px] font-semibold text-slate-300">
+                              {name}
+                            </p>
+
+                            <div className="mt-0.5 flex items-center gap-1.5">
+                              <span
+                                className={`text-[8px] ${
+                                  online
+                                    ? "text-emerald-400"
+                                    : "text-slate-600"
+                                }`}
+                              >
+                                {online
+                                  ? "Online"
+                                  : "Offline"}
+                              </span>
+
+                              {isHost && (
+                                <>
+                                  <span className="text-slate-700">
+                                    ·
+                                  </span>
+
+                                  <span className="text-[8px] text-violet-400">
+                                    Host
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                  )}
+                </div>
+              ) : (
+                <div className="mt-4 rounded-xl border border-dashed border-white/[0.07] py-8 text-center">
+                  <p className="text-[10px] text-slate-600">
+                    No participants found.
+                  </p>
+                </div>
+              )}
             </section>
+          </section>
+
+          {/* ======================================== */}
+          {/* Chat */}
+          {/* ======================================== */}
+
+          <aside className="min-w-0 xl:sticky xl:top-5 xl:h-[calc(100vh-40px)]">
+            <div className="h-full overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.025] shadow-2xl">
+              <ChatPanel />
+            </div>
           </aside>
-        </div>
+        </main>
       </div>
-    </main>
+    </div>
   );
 }
 
 export default RoomPage;
+
