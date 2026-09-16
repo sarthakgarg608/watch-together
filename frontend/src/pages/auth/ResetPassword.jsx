@@ -1,30 +1,77 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+
+import authService from "../../services/authService";
 
 function ResetPassword() {
+  const location = useLocation();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
-  const token = searchParams.get("token");
+  // The reset token is passed through React Router state
+  // after successful OTP verification.
+  const resetToken = location.state?.resetToken;
 
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] =
+    useState("");
+
+  const [showPassword, setShowPassword] =
+    useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] =
+    useState(false);
 
   const [error, setError] = useState("");
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [isSubmitted, setIsSubmitted] =
+    useState(false);
 
-  const handleSubmit = (event) => {
+  function validatePassword(value) {
+    if (value.length < 8) {
+      return "Password must be at least 8 characters long.";
+    }
+
+    if (!/[A-Z]/.test(value)) {
+      return "Password must contain at least one uppercase letter.";
+    }
+
+    if (!/[a-z]/.test(value)) {
+      return "Password must contain at least one lowercase letter.";
+    }
+
+    if (!/[0-9]/.test(value)) {
+      return "Password must contain at least one number.";
+    }
+
+    if (!/[^A-Za-z0-9]/.test(value)) {
+      return "Password must contain at least one special character.";
+    }
+
+    return "";
+  }
+
+  async function handleSubmit(event) {
     event.preventDefault();
 
     setError("");
+    setMessage("");
 
-    if (!password || !confirmPassword) {
-      setError("Please fill in both password fields.");
+    if (!resetToken) {
+      setError(
+        "Your password reset session is invalid or has expired."
+      );
       return;
     }
 
-    if (password.length < 8) {
-      setError("Password must contain at least 8 characters.");
+    const passwordError =
+      validatePassword(password);
+
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
 
@@ -33,43 +80,108 @@ function ResetPassword() {
       return;
     }
 
-    /*
-     * Backend integration will happen later.
-     *
-     * For now we only demonstrate the complete UI flow.
-     */
-    console.log("Reset token:", token);
-    console.log("New password submitted.");
+    try {
+      setLoading(true);
 
-    setIsSubmitted(true);
-  };
+      const response =
+        await authService.resetPassword(
+          resetToken,
+          password
+        );
+
+      if (!response.success) {
+        throw new Error(
+          response.message ||
+            "Unable to reset password."
+        );
+      }
+
+      setIsSubmitted(true);
+      setMessage(
+        response.message ||
+          "Password reset successfully."
+      );
+    } catch (error) {
+      setError(
+        error.message ||
+          "Unable to reset password. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleGoToLogin() {
+    navigate("/login", {
+      replace: true,
+    });
+  }
+
+  if (!resetToken && !isSubmitted) {
+    return (
+      <main className="min-h-screen bg-slate-950 px-4 py-12 text-white">
+        <div className="mx-auto flex min-h-[75vh] max-w-md items-center justify-center">
+          <div className="w-full rounded-3xl border border-white/10 bg-white/[0.04] p-8 text-center shadow-2xl backdrop-blur-xl">
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/10 text-3xl">
+              !
+            </div>
+
+            <h1 className="text-2xl font-bold">
+              Reset session expired
+            </h1>
+
+            <p className="mt-3 text-sm leading-6 text-slate-400">
+              Your password reset session is invalid
+              or has expired. Please request a new
+              password reset OTP.
+            </p>
+
+            <Link
+              to="/forgot-password"
+              className="mt-7 inline-flex w-full items-center justify-center rounded-xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+            >
+              Request New OTP
+            </Link>
+
+            <Link
+              to="/login"
+              className="mt-4 inline-flex text-sm font-medium text-slate-400 transition hover:text-white"
+            >
+              Back to Sign In
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   if (isSubmitted) {
     return (
-      <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#040611] px-4 py-10 text-white">
-        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-600/10 blur-[140px]" />
+      <main className="relative min-h-screen overflow-hidden bg-slate-950 px-4 py-12 text-white">
+        <div className="pointer-events-none absolute left-1/2 top-0 h-80 w-80 -translate-x-1/2 rounded-full bg-emerald-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 right-0 h-72 w-72 rounded-full bg-cyan-500/10 blur-3xl" />
 
-        <div className="relative z-10 w-full max-w-md">
-          <div className="glass-strong rounded-3xl p-8 text-center shadow-2xl shadow-black/30 sm:p-10">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10 text-2xl text-emerald-400">
+        <div className="relative mx-auto flex min-h-[75vh] max-w-md items-center justify-center">
+          <div className="w-full rounded-3xl border border-white/10 bg-white/[0.04] p-8 text-center shadow-2xl backdrop-blur-xl sm:p-10">
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10 text-2xl text-emerald-400">
               ✓
             </div>
 
-            <h1 className="mt-6 text-2xl font-black">
-              Password updated
+            <h1 className="text-3xl font-bold tracking-tight">
+              Password Updated
             </h1>
 
-            <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-400">
-              Your password has been updated successfully. You can now sign
-              in with your new password.
+            <p className="mt-4 text-sm leading-6 text-slate-400">
+              {message ||
+                "Your password has been reset successfully."}
             </p>
 
             <button
               type="button"
-              onClick={() => navigate("/login")}
-              className="mt-7 w-full rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-violet-500/20 transition hover:scale-[1.01]"
+              onClick={handleGoToLogin}
+              className="mt-8 w-full rounded-xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 active:scale-[0.98]"
             >
-              Continue to Login
+              Continue to Sign In
             </button>
           </div>
         </div>
@@ -78,108 +190,294 @@ function ResetPassword() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#040611] px-4 py-10 text-white">
-      {/* Background */}
-      <div className="pointer-events-none absolute -left-32 top-1/4 h-96 w-96 rounded-full bg-violet-600/10 blur-[120px]" />
+    <main className="relative min-h-screen overflow-hidden bg-slate-950 px-4 py-12 text-white">
+      <div className="pointer-events-none absolute left-1/2 top-0 h-80 w-80 -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl" />
+      <div className="pointer-events-none absolute bottom-0 right-0 h-72 w-72 rounded-full bg-blue-500/10 blur-3xl" />
 
-      <div className="pointer-events-none absolute -right-32 bottom-1/4 h-96 w-96 rounded-full bg-fuchsia-600/10 blur-[120px]" />
-
-      <div className="relative z-10 w-full max-w-md">
-        {/* Logo */}
-        <Link
-          to="/"
-          className="mx-auto flex w-fit items-center gap-2"
-        >
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 font-black shadow-lg shadow-violet-500/20">
-            ▶
-          </div>
-
-          <span className="text-lg font-black">
-            Watch Together
-          </span>
-        </Link>
-
-        {/* Card */}
-        <div className="glass-strong mt-8 rounded-3xl p-6 shadow-2xl shadow-black/30 sm:p-8">
-          <div className="text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/10 text-xl text-violet-300">
+      <div className="relative mx-auto flex min-h-[75vh] max-w-md items-center justify-center">
+        <div className="w-full rounded-3xl border border-white/10 bg-white/[0.04] p-8 shadow-2xl backdrop-blur-xl sm:p-10">
+          {/* Header */}
+          <div className="mb-8 text-center">
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-500/10 text-2xl">
               🔐
             </div>
 
-            <h1 className="mt-5 text-2xl font-black">
-              Create a new password
+            <h1 className="text-3xl font-bold tracking-tight">
+              Create New Password
             </h1>
 
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              Choose a strong password for your account.
+            <p className="mt-3 text-sm leading-6 text-slate-400">
+              Choose a strong password for your
+              Watch Together account.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="mt-7 space-y-5">
-            {/* Password */}
+          {/* Error */}
+          {error && (
+            <div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm leading-5 text-red-300">
+              {error}
+            </div>
+          )}
+
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-5"
+          >
+            {/* New password */}
             <div>
               <label
                 htmlFor="password"
-                className="mb-2 block text-xs font-semibold text-slate-300"
+                className="mb-2 block text-sm font-medium text-slate-200"
               >
-                New password
+                New Password
               </label>
 
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Enter your new password"
-                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-violet-500/50 focus:bg-white/[0.06]"
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={
+                    showPassword
+                      ? "text"
+                      : "password"
+                  }
+                  value={password}
+                  onChange={(event) =>
+                    setPassword(
+                      event.target.value
+                    )
+                  }
+                  placeholder="Enter your new password"
+                  autoComplete="new-password"
+                  disabled={loading}
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3 pr-12 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-cyan-400/10 disabled:cursor-not-allowed disabled:opacity-60"
+                />
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowPassword(
+                      (current) => !current
+                    )
+                  }
+                  disabled={loading}
+                  aria-label={
+                    showPassword
+                      ? "Hide password"
+                      : "Show password"
+                  }
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {showPassword ? (
+                    // Eye with slash
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      className="h-5 w-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3 3l18 18"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M10.58 10.58a2 2 0 102.83 2.83"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9.88 4.24A10.6 10.6 0 0112 4c5 0 8.5 4 9.5 8a10.7 10.7 0 01-4.08 5.43M6.61 6.61C4.64 7.86 3.4 9.85 2.5 12c.67 1.92 2.16 4.05 4.5 5.4"
+                      />
+                    </svg>
+                  ) : (
+                    // Eye
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      className="h-5 w-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7z"
+                      />
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="3"
+                      />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Password requirements */}
+            <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Password requirements
+              </p>
+
+              <div className="grid grid-cols-1 gap-2 text-xs text-slate-400 sm:grid-cols-2">
+                <p>
+                  {password.length >= 8
+                    ? "✓"
+                    : "○"}{" "}
+                  8+ characters
+                </p>
+
+                <p>
+                  {/[A-Z]/.test(password)
+                    ? "✓"
+                    : "○"}{" "}
+                  Uppercase letter
+                </p>
+
+                <p>
+                  {/[a-z]/.test(password)
+                    ? "✓"
+                    : "○"}{" "}
+                  Lowercase letter
+                </p>
+
+                <p>
+                  {/[0-9]/.test(password)
+                    ? "✓"
+                    : "○"}{" "}
+                  Number
+                </p>
+
+                <p>
+                  {/[^A-Za-z0-9]/.test(password)
+                    ? "✓"
+                    : "○"}{" "}
+                  Special character
+                </p>
+              </div>
             </div>
 
             {/* Confirm password */}
             <div>
               <label
                 htmlFor="confirmPassword"
-                className="mb-2 block text-xs font-semibold text-slate-300"
+                className="mb-2 block text-sm font-medium text-slate-200"
               >
-                Confirm password
+                Confirm Password
               </label>
 
-              <input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(event) =>
-                  setConfirmPassword(event.target.value)
-                }
-                placeholder="Confirm your new password"
-                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-violet-500/50 focus:bg-white/[0.06]"
-              />
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  type={
+                    showConfirmPassword
+                      ? "text"
+                      : "password"
+                  }
+                  value={confirmPassword}
+                  onChange={(event) =>
+                    setConfirmPassword(
+                      event.target.value
+                    )
+                  }
+                  placeholder="Confirm your new password"
+                  autoComplete="new-password"
+                  disabled={loading}
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3 pr-12 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-400/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-cyan-400/10 disabled:cursor-not-allowed disabled:opacity-60"
+                />
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowConfirmPassword(
+                      (current) => !current
+                    )
+                  }
+                  disabled={loading}
+                  aria-label={
+                    showConfirmPassword
+                      ? "Hide password"
+                      : "Show password"
+                  }
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {showConfirmPassword ? (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      className="h-5 w-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3 3l18 18"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M10.58 10.58a2 2 0 102.83 2.83"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9.88 4.24A10.6 10.6 0 0112 4c5 0 8.5 4 9.5 8a10.7 10.7 0 01-4.08 5.43M6.61 6.61C4.64 7.86 3.4 9.85 2.5 12c.67 1.92 2.16 4.05 4.5 5.4"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      className="h-5 w-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7z"
+                      />
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="3"
+                      />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
 
-            {/* Error */}
-            {error && (
-              <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-xs leading-5 text-red-300">
-                {error}
-              </div>
-            )}
-
+            {/* Submit */}
             <button
               type="submit"
-              className="w-full rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-500/20 transition hover:scale-[1.01] hover:shadow-violet-500/30"
+              disabled={loading}
+              className="w-full rounded-xl bg-white px-5 py-3.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Update Password
+              {loading
+                ? "Updating Password..."
+                : "Update Password"}
             </button>
           </form>
 
-          <p className="mt-6 text-center text-xs text-slate-500">
-            Remember your password?{" "}
+          {/* Back to login */}
+          <div className="mt-7 text-center">
             <Link
               to="/login"
-              className="font-semibold text-violet-300 transition hover:text-violet-200"
+              className="text-sm font-medium text-slate-400 transition hover:text-white"
             >
-              Back to login
+              Back to Sign In
             </Link>
-          </p>
+          </div>
         </div>
       </div>
     </main>
@@ -187,3 +485,4 @@ function ResetPassword() {
 }
 
 export default ResetPassword;
+

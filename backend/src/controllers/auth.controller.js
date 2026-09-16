@@ -5,12 +5,7 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import RefreshToken from "../models/RefreshToken.js";
-import {
-  generateAccessToken,
-  generateRefreshToken,
-  verifyRefreshToken,
-  hashToken,
-} from "../utils/jwt.js";
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken, generatePasswordResetToken, verifyPasswordResetToken, hashToken, } from "../utils/jwt.js";
 import {
   refreshTokenCookieName,
   refreshTokenCookieOptions,
@@ -1163,13 +1158,24 @@ const forgotPassword = asyncHandler(
   }
 );
 
-const resetPassword = asyncHandler(
+
+/*
+ * Verify the OTP entered during password reset.
+ *
+ * This endpoint does NOT change the password.
+ * It only proves that the user successfully
+ * verified the password-reset OTP.
+ *
+ * After successful verification, a short-lived
+ * password-reset token is returned.
+ */
+const verifyResetOtp = asyncHandler(
   async (req, res) => {
-    const {
-      email,
-      otp,
-      newPassword,
-    } = req.body;
+    const { email, otp } = req.body;
+
+    // -----------------------------------------
+    // 1. Validate required fields
+    // -----------------------------------------
 
     if (!email) {
       throw new ApiError(
@@ -1185,22 +1191,33 @@ const resetPassword = asyncHandler(
       );
     }
 
-    if (!newPassword) {
+    if (
+      typeof email !== "string" ||
+      typeof otp !== "string"
+    ) {
       throw new ApiError(
         400,
-        "New password is required."
+        "Invalid input."
       );
     }
 
-    if (newPassword.length < 8) {
+    if (!/^\d{6}$/.test(otp)) {
       throw new ApiError(
         400,
-        "Password must be at least 8 characters long."
+        "OTP must be 6 digits."
       );
     }
+
+    // -----------------------------------------
+    // 2. Normalize email
+    // -----------------------------------------
 
     const normalizedEmail =
       email.trim().toLowerCase();
+
+    // -----------------------------------------
+    // 3. Find password-reset OTP
+    // -----------------------------------------
 
     const otpRecord = await Otp.findOne({
       email: normalizedEmail,
@@ -1214,54 +1231,272 @@ const resetPassword = asyncHandler(
       );
     }
 
-    if (otpRecord.expiresAt < new Date()) {
+    // -----------------------------------------
+    // 4. Check OTP expiration
+    // -----------------------------------------
+
+    if (
+      otpRecord.expiresAt < new Date()
+    ) {
       await Otp.deleteOne({
         _id: otpRecord._id,
       });
 
       throw new ApiError(
         400,
-        "OTP has expired."
+        "OTP has expired. Please request a new OTP."
       );
     }
 
-    if (otpRecord.attempts >= otpRecord.maxAttempts) {
-  await Otp.deleteOne({
-    _id: otpRecord._id,
-  });
+    // -----------------------------------------
+    // 5. Check maximum attempts
+    // -----------------------------------------
 
-  throw new ApiError(
-    400,
-    "Too many incorrect OTP attempts. Please request a new OTP."
-  );
-}
+    if (
+      otpRecord.attempts >=
+      otpRecord.maxAttempts
+    ) {
+      await Otp.deleteOne({
+        _id: otpRecord._id,
+      });
 
-const isOtpValid = await bcrypt.compare(
-  otp,
-  otpRecord.otpHash
-);
+      throw new ApiError(
+        400,
+        "Too many incorrect OTP attempts. Please request a new OTP."
+      );
+    }
 
-if (!isOtpValid) {
-  otpRecord.attempts += 1;
+    // -----------------------------------------
+    // 6. Verify OTP
+    // -----------------------------------------
 
-  await otpRecord.save();
+    const isOtpValid =
+      await bcrypt.compare(
+        otp,
+        otpRecord.otpHash
+      );
 
-  throw new ApiError(
-    400,
-    "Invalid OTP."
-  );
-}
+    if (!isOtpValid) {
+      otpRecord.attempts += 1;
+
+      await otpRecord.save();
+
+      throw new ApiError(
+        400,
+        "Invalid OTP."
+      );
+    }
+
+    // -----------------------------------------
+    // 7. Make sure the user still exists
+    // -----------------------------------------
 
     const user = await User.findOne({
       email: normalizedEmail,
     });
 
     if (!user) {
+      /*
+       * This should normally not happen because
+       * forgotPassword only sends OTPs for existing
+       * users, but we still validate it here.
+       */
+      await Otp.deleteOne({
+        _id: otpRecord._id,
+      });
+
       throw new ApiError(
-        404,
-        "User not found."
+        400,
+        "Unable to verify password reset request."
       );
     }
+
+    // -----------------------------------------
+    // 8. Delete the OTP
+    // -----------------------------------------
+    //
+    // The OTP has now served its purpose.
+    // It cannot be reused.
+    //
+
+    await Otp.deleteOne({
+      _id: otpRecord._id,
+    });
+
+    // -----------------------------------------
+    // 9. Generate temporary reset token
+    // -----------------------------------------
+
+    const resetToken =
+      generatePasswordResetToken(
+        user._id.toString()
+      );
+
+    // -----------------------------------------
+    // 10. Send reset token
+    // -----------------------------------------
+
+    res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          resetToken,
+        },
+        "OTP verified successfully."
+      )
+    );
+  }
+);
+
+
+/*
+ * Change the user's password after the
+ * password-reset OTP has been verified.
+ *
+ * The resetToken proves that the OTP was
+ * successfully verified.
+ */
+const resetPassword = asyncHandler(
+  async (req, res) => {
+    const {
+      resetToken,
+      newPassword,
+    } = req.body;
+
+    // -----------------------------------------
+    // 1. Validate required fields
+    // -----------------------------------------
+
+    if (!resetToken) {
+      throw new ApiError(
+        400,
+        "Password reset token is required."
+      );
+    }
+
+    if (!newPassword) {
+      throw new ApiError(
+        400,
+        "New password is required."
+      );
+    }
+
+    if (
+      typeof resetToken !== "string" ||
+      typeof newPassword !== "string"
+    ) {
+      throw new ApiError(
+        400,
+        "Invalid input."
+      );
+    }
+
+    // -----------------------------------------
+    // 2. Validate password
+    // -----------------------------------------
+
+    if (newPassword.length < 8) {
+  throw new ApiError(
+    400,
+    "Password must be at least 8 characters long."
+  );
+}
+
+if (!/[A-Z]/.test(newPassword)) {
+  throw new ApiError(
+    400,
+    "Password must contain at least one uppercase letter."
+  );
+}
+
+if (!/[a-z]/.test(newPassword)) {
+  throw new ApiError(
+    400,
+    "Password must contain at least one lowercase letter."
+  );
+}
+
+if (!/[0-9]/.test(newPassword)) {
+  throw new ApiError(
+    400,
+    "Password must contain at least one number."
+  );
+}
+
+if (!/[^A-Za-z0-9]/.test(newPassword)) {
+  throw new ApiError(
+    400,
+    "Password must contain at least one special character."
+  );
+}
+
+    // -----------------------------------------
+    // 3. Verify password-reset token
+    // -----------------------------------------
+
+    let decodedToken;
+
+    try {
+      decodedToken =
+        verifyPasswordResetToken(
+          resetToken
+        );
+    } catch (error) {
+      if (
+        error.name === "TokenExpiredError"
+      ) {
+        throw new ApiError(
+          400,
+          "Password reset session has expired. Please start again."
+        );
+      }
+
+      throw new ApiError(
+        400,
+        "Invalid password reset token."
+      );
+    }
+
+    // -----------------------------------------
+    // 4. Validate token purpose
+    // -----------------------------------------
+
+    if (
+      decodedToken.purpose !==
+      "password-reset"
+    ) {
+      throw new ApiError(
+        400,
+        "Invalid password reset token."
+      );
+    }
+
+    if (!decodedToken.userId) {
+      throw new ApiError(
+        400,
+        "Invalid password reset token."
+      );
+    }
+
+    // -----------------------------------------
+    // 5. Find user
+    // -----------------------------------------
+
+    const user =
+      await User.findById(
+        decodedToken.userId
+      );
+
+    if (!user) {
+      throw new ApiError(
+        400,
+        "Unable to reset password."
+      );
+    }
+
+    // -----------------------------------------
+    // 6. Hash new password
+    // -----------------------------------------
 
     user.password =
       await bcrypt.hash(
@@ -1271,9 +1506,13 @@ if (!isOtpValid) {
 
     await user.save();
 
-    await Otp.deleteOne({
-      _id: otpRecord._id,
-    });
+    // -----------------------------------------
+    // 7. Revoke existing refresh tokens
+    // -----------------------------------------
+    //
+    // This logs the user out from existing
+    // sessions after a password reset.
+    //
 
     await RefreshToken.updateMany(
       {
@@ -1287,6 +1526,10 @@ if (!isOtpValid) {
       }
     );
 
+    // -----------------------------------------
+    // 8. Send response
+    // -----------------------------------------
+
     res.status(200).json(
       new ApiResponse(
         200,
@@ -1297,6 +1540,7 @@ if (!isOtpValid) {
   }
 );
 
+
 export {
   loginUser,
   refreshAccessToken,
@@ -1306,5 +1550,7 @@ export {
   sendVerificationOtp,
   verifyEmail,
   forgotPassword,
+  verifyResetOtp,
   resetPassword,
 };
+

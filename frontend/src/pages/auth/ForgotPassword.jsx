@@ -1,38 +1,153 @@
 // ForgotPassword.jsx
 // ------------------------------------------------------
-// Password recovery request screen.
+// Password recovery screen.
 //
-// Current phase:
-// - UI and navigation
-//
-// Backend integration will be connected later.
+// Flow:
+// 1. Enter email
+// 2. Send password-reset OTP
+// 3. Enter OTP
+// 4. Verify OTP
+// 5. Continue to password reset screen
 // ------------------------------------------------------
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+} from "react-router-dom";
+
+import authService from "../../services/authService";
 
 function ForgotPassword() {
-  const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
-  const handleSubmit = (event) => {
+  const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
+
+  const [step, setStep] = useState("email");
+
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+
+  const [loading, setLoading] = useState(false);
+
+  /*
+   * Send password-reset OTP.
+   */
+  const handleSendOtp = async (event) => {
     event.preventDefault();
 
     setError("");
+    setMessage("");
 
-    if (!email.trim()) {
-      setError("Please enter your email address.");
+    const normalizedEmail =
+      email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      setError(
+        "Please enter your email address."
+      );
       return;
     }
 
-    // Temporary frontend behaviour.
-    setSubmitted(true);
+    setLoading(true);
+
+    try {
+      const response =
+        await authService.forgotPassword(
+          normalizedEmail
+        );
+
+      /*
+       * The backend intentionally returns the same
+       * message whether the account exists or not.
+       */
+      setMessage(
+        response.message ||
+          "If an account exists with this email, a password reset OTP has been sent."
+      );
+
+      setStep("otp");
+    } catch (error) {
+      setError(
+        error.message ||
+          "Unable to send the OTP. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /*
+   * Verify the OTP.
+   */
+  const handleVerifyOtp = async (event) => {
+    event.preventDefault();
+
+    setError("");
+    setMessage("");
+
+    if (!/^\d{6}$/.test(otp)) {
+      setError(
+        "Please enter a valid 6-digit OTP."
+      );
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response =
+        await authService.verifyResetOtp(
+          email.trim().toLowerCase(),
+          otp
+        );
+
+      const resetToken =
+        response.data?.resetToken;
+
+      if (!resetToken) {
+        throw new Error(
+          "Password reset session could not be created."
+        );
+      }
+
+      /*
+       * Do not put the reset token in the URL.
+       *
+       * React Router state keeps it out of the
+       * browser address bar.
+       */
+      navigate("/reset-password", {
+        replace: true,
+        state: {
+          resetToken,
+        },
+      });
+    } catch (error) {
+      setError(
+        error.message ||
+          "Unable to verify the OTP. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /*
+   * Allow the user to request another OTP.
+   */
+  const handleChangeEmail = () => {
+    setStep("email");
+    setOtp("");
+    setError("");
+    setMessage("");
   };
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#040611] text-white">
 
+      {/* Background glow */}
       <div className="pointer-events-none fixed inset-0">
 
         <div className="absolute left-[-15%] top-[-10%] h-[500px] w-[500px] rounded-full bg-violet-600/15 blur-[150px]" />
@@ -45,6 +160,7 @@ function ForgotPassword() {
 
         <div className="w-full max-w-md">
 
+          {/* Logo */}
           <div className="mb-8 text-center">
 
             <Link
@@ -59,6 +175,7 @@ function ForgotPassword() {
 
           </div>
 
+          {/* Card */}
           <div
             className="
               rounded-3xl
@@ -72,8 +189,10 @@ function ForgotPassword() {
             "
           >
 
-            {!submitted ? (
+            {step === "email" ? (
+
               <>
+                {/* Icon */}
                 <div
                   className="
                     flex h-12 w-12
@@ -91,8 +210,8 @@ function ForgotPassword() {
                 </h1>
 
                 <p className="mt-2 text-sm leading-6 text-slate-500">
-                  Enter your email and we'll help you
-                  get back into your account.
+                  Enter your email and we'll send
+                  you a secure password reset OTP.
                 </p>
 
                 {error && (
@@ -110,13 +229,17 @@ function ForgotPassword() {
                 )}
 
                 <form
-                  onSubmit={handleSubmit}
+                  onSubmit={handleSendOtp}
                   className="mt-6"
                 >
 
                   <label
                     htmlFor="forgot-email"
-                    className="mb-2 block text-sm font-semibold text-slate-300"
+                    className="
+                      mb-2 block
+                      text-sm font-semibold
+                      text-slate-300
+                    "
                   >
                     Email address
                   </label>
@@ -129,6 +252,8 @@ function ForgotPassword() {
                       setEmail(event.target.value)
                     }
                     placeholder="you@example.com"
+                    autoComplete="email"
+                    disabled={loading}
                     className="
                       w-full rounded-xl
                       border border-white/10
@@ -141,11 +266,14 @@ function ForgotPassword() {
                       focus:border-violet-400/40
                       focus:ring-4
                       focus:ring-violet-500/10
+                      disabled:cursor-not-allowed
+                      disabled:opacity-60
                     "
                   />
 
                   <button
                     type="submit"
+                    disabled={loading}
                     className="
                       mt-5 w-full rounded-xl
                       bg-gradient-to-r
@@ -158,77 +286,201 @@ function ForgotPassword() {
                       transition-all duration-300
                       hover:-translate-y-0.5
                       hover:shadow-xl
+                      disabled:cursor-not-allowed
+                      disabled:opacity-60
+                      disabled:hover:translate-y-0
                     "
                   >
-                    Send reset instructions
+                    {loading
+                      ? "Sending OTP..."
+                      : "Send OTP"}
                   </button>
 
                 </form>
               </>
+
             ) : (
 
-              <div className="text-center">
-
+              <>
+                {/* OTP Icon */}
                 <div
                   className="
-                    mx-auto flex h-16 w-16
+                    flex h-12 w-12
                     items-center justify-center
                     rounded-2xl
-                    bg-emerald-500/10
-                    text-2xl text-emerald-400
+                    bg-violet-500/10
+                    text-xl
                   "
                 >
-                  ✓
+                  #
                 </div>
 
                 <h1 className="mt-5 text-2xl font-black">
-                  Check your email
+                  Verify your OTP
                 </h1>
 
-                <p className="mt-3 text-sm leading-6 text-slate-500">
-                  If an account exists for
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Enter the 6-digit code sent to
                   <span className="text-slate-300">
                     {" "}{email}
                   </span>
-                  , you'll receive password reset
-                  instructions.
                 </p>
 
-                <Link
-                  to="/login"
+                {message && (
+                  <div
+                    className="
+                      mt-5 rounded-xl
+                      border border-emerald-400/20
+                      bg-emerald-500/10
+                      px-4 py-3
+                      text-sm leading-5
+                      text-emerald-300
+                    "
+                  >
+                    {message}
+                  </div>
+                )}
+
+                {error && (
+                  <div
+                    className="
+                      mt-5 rounded-xl
+                      border border-red-400/20
+                      bg-red-500/10
+                      px-4 py-3
+                      text-sm text-red-300
+                    "
+                  >
+                    {error}
+                  </div>
+                )}
+
+                <form
+                  onSubmit={handleVerifyOtp}
+                  className="mt-6"
+                >
+
+                  <label
+                    htmlFor="reset-otp"
+                    className="
+                      mb-2 block
+                      text-sm font-semibold
+                      text-slate-300
+                    "
+                  >
+                    Verification code
+                  </label>
+
+                  <input
+                    id="reset-otp"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={otp}
+                    onChange={(event) => {
+                      const value =
+                        event.target.value.replace(
+                          /\D/g,
+                          ""
+                        );
+
+                      setOtp(value);
+                    }}
+                    placeholder="000000"
+                    autoComplete="one-time-code"
+                    disabled={loading}
+                    className="
+                      w-full rounded-xl
+                      border border-white/10
+                      bg-black/20
+                      px-4 py-3.5
+                      text-center
+                      text-lg font-bold
+                      tracking-[0.45em]
+                      text-white
+                      outline-none
+                      transition-all duration-300
+                      placeholder:text-slate-700
+                      placeholder:tracking-[0.45em]
+                      focus:border-violet-400/40
+                      focus:ring-4
+                      focus:ring-violet-500/10
+                      disabled:cursor-not-allowed
+                      disabled:opacity-60
+                    "
+                  />
+
+                  <button
+                    type="submit"
+                    disabled={
+                      loading ||
+                      otp.length !== 6
+                    }
+                    className="
+                      mt-5 w-full rounded-xl
+                      bg-gradient-to-r
+                      from-violet-600
+                      to-fuchsia-600
+                      py-3.5
+                      text-sm font-bold
+                      shadow-lg
+                      shadow-violet-900/30
+                      transition-all duration-300
+                      hover:-translate-y-0.5
+                      hover:shadow-xl
+                      disabled:cursor-not-allowed
+                      disabled:opacity-60
+                      disabled:hover:translate-y-0
+                    "
+                  >
+                    {loading
+                      ? "Verifying..."
+                      : "Verify OTP"}
+                  </button>
+
+                </form>
+
+                <button
+                  type="button"
+                  onClick={handleChangeEmail}
+                  disabled={loading}
                   className="
-                    mt-6 inline-flex
-                    rounded-xl
-                    border border-white/10
-                    bg-white/[0.04]
-                    px-5 py-3
+                    mt-4 w-full
                     text-sm font-semibold
-                    text-slate-300
-                    transition-all duration-300
-                    hover:bg-white/[0.08]
-                    hover:text-white
+                    text-slate-500
+                    transition-colors
+                    hover:text-violet-400
+                    disabled:cursor-not-allowed
+                    disabled:opacity-50
                   "
                 >
-                  Back to sign in
-                </Link>
+                  Use a different email
+                </button>
 
-              </div>
+              </>
             )}
 
           </div>
 
-          {!submitted && (
-            <p className="mt-6 text-center text-sm text-slate-600">
-              Remember your password?
-              {" "}
-              <Link
-                to="/login"
-                className="text-violet-400 hover:text-violet-300"
-              >
-                Sign in
-              </Link>
-            </p>
-          )}
+          {/* Bottom navigation */}
+          <p className="mt-6 text-center text-sm text-slate-600">
+
+            Remember your password?
+
+            {" "}
+
+            <Link
+              to="/login"
+              className="
+                text-violet-400
+                transition-colors
+                hover:text-violet-300
+              "
+            >
+              Sign in
+            </Link>
+
+          </p>
 
         </div>
 
@@ -239,3 +491,4 @@ function ForgotPassword() {
 }
 
 export default ForgotPassword;
+

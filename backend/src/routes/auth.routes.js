@@ -1,4 +1,5 @@
 import { Router } from "express";
+
 import authenticate from "../middleware/authMiddleware.js";
 
 import {
@@ -10,6 +11,7 @@ import {
   sendVerificationOtp,
   verifyEmail,
   forgotPassword,
+  verifyResetOtp,
   resetPassword,
 } from "../controllers/auth.controller.js";
 
@@ -20,7 +22,6 @@ import {
 } from "../middleware/authRateLimitMiddleware.js";
 
 const router = Router();
-
 
 router.post(
   "/login",
@@ -71,6 +72,25 @@ router.post(
   forgotPassword
 );
 
+/*
+ * Password reset
+ *
+ * Step 1:
+ * Send OTP using /forgot-password
+ *
+ * Step 2:
+ * Verify the OTP.
+ *
+ * Step 3:
+ * Use the returned temporary reset token
+ * to change the password.
+ */
+router.post(
+  "/verify-reset-otp",
+  otpRateLimiter,
+  verifyResetOtp
+);
+
 router.post(
   "/reset-password",
   otpRateLimiter,
@@ -78,3 +98,4 @@ router.post(
 );
 
 export default router;
+

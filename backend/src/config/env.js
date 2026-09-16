@@ -13,6 +13,7 @@ const requiredEnvVariables = [
   "MONGODB_URI",
   "ACCESS_TOKEN_SECRET",
   "REFRESH_TOKEN_SECRET",
+  "PASSWORD_RESET_TOKEN_SECRET",
   "SMTP_USER",
   "SMTP_PASSWORD",
 ];
@@ -35,14 +36,27 @@ const env = {
   clientUrl:
     process.env.CLIENT_URL || "http://localhost:5173",
 
-  accessTokenSecret: process.env.ACCESS_TOKEN_SECRET,
+  accessTokenSecret:
+    process.env.ACCESS_TOKEN_SECRET,
 
-  refreshTokenSecret: process.env.REFRESH_TOKEN_SECRET,
+  refreshTokenSecret:
+    process.env.REFRESH_TOKEN_SECRET,
 
-  smtpHost: process.env.SMTP_HOST || "smtp.gmail.com",
-  smtpPort: Number(process.env.SMTP_PORT) || 465,
-  smtpUser: process.env.SMTP_USER,
-  smtpPassword: process.env.SMTP_PASSWORD,
+  passwordResetTokenSecret:
+    process.env.PASSWORD_RESET_TOKEN_SECRET,
+
+  smtpHost:
+    process.env.SMTP_HOST || "smtp.gmail.com",
+
+  smtpPort:
+    Number(process.env.SMTP_PORT) || 465,
+
+  smtpUser:
+    process.env.SMTP_USER,
+
+  smtpPassword:
+    process.env.SMTP_PASSWORD,
 };
 
 export default env;
+
